@@ -167,6 +167,12 @@ st.markdown("""
         border-radius: 10px !important;
         overflow: hidden !important;
     }
+    
+    /* Plotly 툴팁 글래스모피즘 반투명 및 블러 효과 */
+    .hoverlayer .hovertext path.bg {
+        backdrop-filter: blur(6px) !important;
+        -webkit-backdrop-filter: blur(6px) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -255,6 +261,19 @@ with st.sidebar:
     )
     
     st.caption("💡 **금융 시각화 가이드**: 두 주가는 시계열 연속성을 가진 **꺾은선**으로 비교하고, 괴리율(%)은 0% 기준선의 **막대**로 표기하는 방식이 추세와 괴리 크기를 가장 직관적으로 보여줍니다.")
+
+    st.markdown("<div style='margin-top: 14px; font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 4px;'>🔍 데이터 창(툴팁) 투명도</div>", unsafe_allow_html=True)
+    tooltip_opacity = st.slider(
+        "데이터 창 불투명도",
+        min_value=20,
+        max_value=100,
+        value=75,
+        step=5,
+        format="%d%%",
+        help="차트 영역에 마우스를 올렸을 때 나타나는 데이터 창의 불투명도를 조절합니다. (낮을수록 투명해져 가려진 차트 곡선이 잘 보입니다.)",
+        label_visibility="collapsed"
+    )
+    st.caption("💡 차트를 가리지 않도록 **75% 반투명**이 기본 적용되어 있습니다. 슬라이더로 투명도를 자유롭게 조절할 수 있습니다.")
 
     st.markdown("---")
     st.markdown("""
@@ -358,22 +377,13 @@ st.markdown(f"""
 # ==========================================
 date_index_str = [d.strftime('%Y-%m-%d') for d in df.index]
 
-# 커스텀 툴팁을 위한 텍스트 구성
-custom_hover_text = []
-for idx, (dt, row) in enumerate(df.iterrows()):
-    p_sign = "+" if row['Premium_Pct'] >= 0 else ""
-    p_krw_sign = "+" if row['Premium_KRW'] >= 0 else ""
-    h_text = (
-        f"<b>📅 {dt.strftime('%Y-%m-%d')}</b><br>"
-        f"─────────────────────────────<br>"
-        f"🇰🇷 <b>SK하이닉스</b>: ₩{int(row['SK_KRW']):,}<br>"
-        f"🇺🇸 <b>SKHY (미국)</b>: ${row['SKHY_USD']:.2f} (환율 ₩{row['USDKRW']:,.2f})<br>"
-        f"💵 <b>SKHY 원화 환산</b>: ₩{int(row['SKHY_KRW']):,}<br>"
-        f"─────────────────────────────<br>"
-        f"🎯 <b>ADR 프리미엄</b>: <span style='color:#34d399;'><b>{p_sign}{row['Premium_Pct']:.2f}%</b></span> "
-        f"({p_krw_sign}₩{int(row['Premium_KRW']):,})"
-    )
-    custom_hover_text.append(h_text)
+# 커스텀 툴팁을 위한 지표별 전용 텍스트 구성 (중복 노출 방지 및 가독성 최적화)
+hover_sk = [f"₩{int(r['SK_KRW']):,}" for _, r in df.iterrows()]
+hover_skhy = [f"₩{int(r['SKHY_KRW']):,} (${r['SKHY_USD']:.2f} | 환율 ₩{r['USDKRW']:,.2f})" for _, r in df.iterrows()]
+hover_prem = [
+    f"<b>{'+' if r['Premium_Pct']>=0 else ''}{r['Premium_Pct']:.2f}%</b> ({'+' if r['Premium_KRW']>=0 else ''}₩{int(r['Premium_KRW']):,})"
+    for _, r in df.iterrows()
+]
 
 # 막대 그래프 색상 (양수: 반투명 에메랄드 그린, 음수: 반투명 코랄 레드)
 bar_colors = [
@@ -401,7 +411,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
                 line=dict(color=bar_border_colors, width=1.2)
             ),
             hoverinfo="text",
-            hovertext=custom_hover_text,
+            hovertext=hover_prem,
             opacity=0.85
         ),
         secondary_y=True
@@ -417,7 +427,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
             line=dict(color='#38bdf8', width=2.8),
             marker=dict(size=5, color='#38bdf8'),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_sk
         ),
         secondary_y=False
     )
@@ -432,7 +442,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
             line=dict(color='#fb923c', width=2.8),
             marker=dict(size=5, color='#fb923c'),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_skhy
         ),
         secondary_y=False
     )
@@ -448,7 +458,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             line=dict(color='#38bdf8', width=2.8),
             marker=dict(size=5),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_sk
         ),
         secondary_y=False
     )
@@ -461,7 +471,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             line=dict(color='#fb923c', width=2.8),
             marker=dict(size=5),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_skhy
         ),
         secondary_y=False
     )
@@ -474,7 +484,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             line=dict(color='#34d399', width=2.5, dash='dot'),
             marker=dict(size=6, symbol='diamond', color='#34d399'),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_prem
         ),
         secondary_y=True
     )
@@ -488,7 +498,7 @@ else:
             name="SK하이닉스 (원)",
             marker=dict(color='rgba(56, 189, 248, 0.7)', line=dict(color='#38bdf8', width=1)),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_sk
         ),
         secondary_y=False
     )
@@ -499,7 +509,7 @@ else:
             name="SKHY 환산주가 ($×10×환율)",
             marker=dict(color='rgba(251, 146, 60, 0.7)', line=dict(color='#fb923c', width=1)),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_skhy
         ),
         secondary_y=False
     )
@@ -512,7 +522,7 @@ else:
             line=dict(color='#34d399', width=3),
             marker=dict(size=7, color='#34d399'),
             hoverinfo="text",
-            hovertext=custom_hover_text
+            hovertext=hover_prem
         ),
         secondary_y=True
     )
@@ -529,6 +539,11 @@ fig.add_hline(
     annotation_font_color="#94a3b8"
 )
 
+# 데이터 창 투명도 색상 계산 (사이드바 슬라이더 연동)
+alpha = tooltip_opacity / 100.0
+hover_bg = f'rgba(15, 23, 42, {alpha:.2f})'
+hover_border = f'rgba(148, 163, 184, {min(1.0, alpha + 0.15):.2f})'
+
 # 차트 레이아웃 튜닝 (다크 테마 디자인)
 fig.update_layout(
     paper_bgcolor='#0f172a',
@@ -538,10 +553,10 @@ fig.update_layout(
     margin=dict(l=20, r=20, t=30, b=20),
     hovermode='x unified',
     hoverlabel=dict(
-        bgcolor='#0f172a',
+        bgcolor=hover_bg,
         font_size=12,
         font_family="Noto Sans KR, monospace",
-        bordercolor='#334155'
+        bordercolor=hover_border
     ),
     legend=dict(
         orientation="h",
