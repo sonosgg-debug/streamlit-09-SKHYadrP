@@ -1,0 +1,23 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # 3일마다 00:00 UTC에 실행 (Streamlit 7일 비활성 수면 방지)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Actions 탭에서 수동 실행 가능
+
+jobs:
+  keep_alive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Commit and push empty commit
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keep alive empty commit"
+          git push
