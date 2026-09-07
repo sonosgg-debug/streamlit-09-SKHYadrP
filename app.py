@@ -267,13 +267,13 @@ with st.sidebar:
         "데이터 창 불투명도",
         min_value=20,
         max_value=100,
-        value=75,
+        value=50,
         step=5,
         format="%d%%",
         help="차트 영역에 마우스를 올렸을 때 나타나는 데이터 창의 불투명도를 조절합니다. (낮을수록 투명해져 가려진 차트 곡선이 잘 보입니다.)",
         label_visibility="collapsed"
     )
-    st.caption("💡 차트를 가리지 않도록 **75% 반투명**이 기본 적용되어 있습니다. 슬라이더로 투명도를 자유롭게 조절할 수 있습니다.")
+    st.caption("💡 차트를 가리지 않도록 **50% 반투명**이 기본 적용되어 있습니다. 슬라이더로 투명도를 자유롭게 조절할 수 있습니다.")
 
     st.markdown("---")
     st.markdown("""
