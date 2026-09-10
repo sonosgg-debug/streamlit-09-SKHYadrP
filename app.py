@@ -194,8 +194,10 @@ def load_data(start_d: datetime.date, end_d: datetime.date) -> pd.DataFrame:
 # ==========================================
 # 4. 세션 상태(Session State) 초기화
 # ==========================================
+DEFAULT_3M_START_DATE = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
+
 if 'start_date' not in st.session_state:
-    st.session_state.start_date = DEFAULT_START_DATE
+    st.session_state.start_date = DEFAULT_3M_START_DATE
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.date.today()
 
@@ -213,7 +215,7 @@ with st.sidebar:
         value=st.session_state.start_date,
         min_value=datetime.date(2026, 1, 1),
         max_value=datetime.date.today(),
-        help="SKHY 상장 이후 첫 거래일(2026-07-13)이 기본값입니다."
+        help="최근 3개월(또는 상장일 2026-07-13)이 기본값입니다."
     )
     
     input_end_date = st.date_input(
@@ -233,13 +235,13 @@ with st.sidebar:
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c2:
-        if st.button("1개월", use_container_width=True, help="최근 30일"):
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=30))
+        if st.button("3개월", use_container_width=True, help="최근 90일"):
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c3:
-        if st.button("2주", use_container_width=True, help="최근 14일"):
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=14))
+        if st.button("1개월", use_container_width=True, help="최근 30일"):
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=30))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
 
