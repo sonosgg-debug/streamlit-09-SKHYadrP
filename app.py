@@ -173,6 +173,13 @@ st.markdown("""
         backdrop-filter: blur(6px) !important;
         -webkit-backdrop-filter: blur(6px) !important;
     }
+    
+    /* 구분선(Divider) 스타일링 */
+    hr {
+        border: none !important;
+        border-top: 1px solid #334155 !important;
+        margin: 1.8rem 0 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -302,6 +309,7 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
+st.divider()
 
 # ==========================================
 # 7. 데이터 로드 및 검증
@@ -371,10 +379,15 @@ st.markdown(f"""
     </div>
 </div>
 """, unsafe_allow_html=True)
+st.divider()
 
 # ==========================================
-# 9. 차트 영역 (Plotly 인터랙티브 듀얼 축 차트)
+# 9. 1. SKHY(ADR) 프리미엄 차트 영역
 # ==========================================
+st.markdown(
+    "<h2 class='section-title'>1. SKHY(ADR) 프리미엄 차트</h2>",
+    unsafe_allow_html=True
+)
 date_index_str = [d.strftime('%Y-%m-%d') for d in df.index]
 
 # 커스텀 툴팁을 위한 지표별 전용 텍스트 구성 (중복 노출 방지 및 가독성 최적화)
@@ -607,7 +620,111 @@ fig.update_xaxes(
 st.plotly_chart(fig, use_container_width=True)
 
 # ==========================================
-# 10. 하단 원본 데이터 테이블 영역
+# 10. 2. SK하이닉스 vs SKHY 주가 차트 (가공 없는 원본 주가 비교)
+# ==========================================
+st.markdown(
+    "<h2 class='section-title'>2. SK하이닉스 vs SKHY 주가 차트</h2>",
+    unsafe_allow_html=True
+)
+
+fig_prices = make_subplots(specs=[[{"secondary_y": True}]])
+
+# 1) SK하이닉스 원본 주가 (좌측 Y축: 원화, 꺾은선)
+hover_sk_price = [f"₩{int(r['SK_KRW']):,}" for _, r in df.iterrows()]
+fig_prices.add_trace(
+    go.Scatter(
+        x=date_index_str,
+        y=df['SK_KRW'],
+        name="SK하이닉스 (원)",
+        mode='lines+markers',
+        line=dict(color='#38bdf8', width=2.8),
+        marker=dict(size=5, color='#38bdf8'),
+        hoverinfo="text",
+        hovertext=hover_sk_price
+    ),
+    secondary_y=False
+)
+
+# 2) SKHY 원본 주가 (우측 Y축: 달러, 꺾은선)
+hover_skhy_usd = [f"${r['SKHY_USD']:.2f}" for _, r in df.iterrows()]
+fig_prices.add_trace(
+    go.Scatter(
+        x=date_index_str,
+        y=df['SKHY_USD'],
+        name="SKHY ($)",
+        mode='lines+markers',
+        line=dict(color='#a78bfa', width=2.8),
+        marker=dict(size=5, color='#a78bfa'),
+        hoverinfo="text",
+        hovertext=hover_skhy_usd
+    ),
+    secondary_y=True
+)
+
+fig_prices.update_layout(
+    paper_bgcolor='#0f172a',
+    plot_bgcolor='#1e293b',
+    font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
+    height=500,
+    margin=dict(l=20, r=20, t=30, b=20),
+    hovermode='x unified',
+    hoverlabel=dict(
+        bgcolor=hover_bg,
+        font_size=12,
+        font_family="Noto Sans KR, monospace",
+        bordercolor=hover_border
+    ),
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5,
+        bgcolor='rgba(15, 23, 42, 0.85)',
+        bordercolor='#334155',
+        borderwidth=1,
+        font=dict(color='#f8fafc', size=12)
+    )
+)
+
+# 좌측 주 Y축 (원화 주가)
+fig_prices.update_yaxes(
+    title=dict(text="<b>SK하이닉스 (원, KRW)</b>", font=dict(color='#38bdf8', size=13)),
+    tickprefix="₩",
+    tickformat=",.0f",
+    color='#cbd5e1',
+    gridcolor='#334155',
+    zeroline=False,
+    secondary_y=False
+)
+
+# 우측 보조 Y축 (달러 주가)
+fig_prices.update_yaxes(
+    title=dict(text="<b>SKHY (달러, USD)</b>", font=dict(color='#a78bfa', size=13)),
+    tickprefix="$",
+    tickformat=",.2f",
+    color='#cbd5e1',
+    gridcolor='rgba(51, 65, 85, 0.3)',
+    zeroline=False,
+    secondary_y=True
+)
+
+# X축
+fig_prices.update_xaxes(
+    color='#cbd5e1',
+    gridcolor='#334155',
+    tickangle=-35,
+    type='category'
+)
+
+# 주가 비교 차트 렌더링
+st.plotly_chart(fig_prices, use_container_width=True)
+
+# 차트 영역과 원본 데이터 확인 영역 사이 가로선
+st.divider()
+
+# ==========================================
+# 11. 하단 원본 데이터 테이블 영역
 # ==========================================
 st.markdown(
     "<h2 class='section-title'>📋 SKHY(ADR) 프리미엄 원본 데이터 확인</h2>",
