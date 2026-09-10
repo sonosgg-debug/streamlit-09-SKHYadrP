@@ -722,11 +722,123 @@ fig_prices.update_xaxes(
 # 주가 비교 차트 렌더링
 st.plotly_chart(fig_prices, use_container_width=True)
 
+# ==========================================
+# 11. 3. SK하이닉스 vs SKHY 수익률 차트 (기준일 대비 백분율)
+# ==========================================
+st.markdown(
+    "<h2 class='section-title'>3. SK하이닉스 vs SKHY 수익률 차트</h2>",
+    unsafe_allow_html=True
+)
+
+base_date_str = df.index[0].strftime('%Y-%m-%d')
+base_sk = df['SK_KRW'].iloc[0]
+base_skhy = df['SKHY_USD'].iloc[0]
+
+# 수익률 계산 (시작일 주가 기준 %)
+sk_returns = ((df['SK_KRW'] - base_sk) / base_sk) * 100.0 if base_sk != 0 else pd.Series(0.0, index=df.index)
+skhy_returns = ((df['SKHY_USD'] - base_skhy) / base_skhy) * 100.0 if base_skhy != 0 else pd.Series(0.0, index=df.index)
+
+hover_sk_ret = [
+    f"<b>{'+' if ret >= 0 else ''}{ret:.2f}%</b> (₩{int(r['SK_KRW']):,})"
+    for ret, (_, r) in zip(sk_returns, df.iterrows())
+]
+hover_skhy_ret = [
+    f"<b>{'+' if ret >= 0 else ''}{ret:.2f}%</b> (${r['SKHY_USD']:.2f})"
+    for ret, (_, r) in zip(skhy_returns, df.iterrows())
+]
+
+fig_returns = go.Figure()
+
+# 1) SK하이닉스 수익률 (꺾은선)
+fig_returns.add_trace(
+    go.Scatter(
+        x=date_index_str,
+        y=sk_returns,
+        name="SK하이닉스 수익률(%)",
+        mode='lines+markers',
+        line=dict(color='#38bdf8', width=2.8),
+        marker=dict(size=5, color='#38bdf8'),
+        hoverinfo="x+name+text",
+        hovertext=hover_sk_ret
+    )
+)
+
+# 2) SKHY 수익률 (꺾은선)
+fig_returns.add_trace(
+    go.Scatter(
+        x=date_index_str,
+        y=skhy_returns,
+        name="SKHY 수익률(%)",
+        mode='lines+markers',
+        line=dict(color='#a78bfa', width=2.8),
+        marker=dict(size=5, color='#a78bfa'),
+        hoverinfo="x+name+text",
+        hovertext=hover_skhy_ret
+    )
+)
+
+# 0% 기준선 추가
+fig_returns.add_hline(
+    y=0,
+    line_dash="dash",
+    line_color="#64748b",
+    line_width=1.5,
+    annotation_text="기준선 (0%)",
+    annotation_position="bottom right",
+    annotation_font_color="#94a3b8"
+)
+
+fig_returns.update_layout(
+    paper_bgcolor='#0f172a',
+    plot_bgcolor='#1e293b',
+    font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
+    height=500,
+    margin=dict(l=20, r=20, t=30, b=20),
+    hovermode='x unified',
+    hoverlabel=dict(
+        bgcolor=hover_bg,
+        font_size=12,
+        font_family="Noto Sans KR, monospace",
+        bordercolor=hover_border
+    ),
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="center",
+        x=0.5,
+        bgcolor='rgba(15, 23, 42, 0.85)',
+        bordercolor='#334155',
+        borderwidth=1,
+        font=dict(color='#f8fafc', size=12)
+    )
+)
+
+fig_returns.update_yaxes(
+    title=dict(text="<b>수익률 (%)</b>", font=dict(color='#f8fafc', size=13)),
+    ticksuffix="%",
+    tickformat="+.1f",
+    color='#cbd5e1',
+    gridcolor='#334155',
+    zeroline=False
+)
+
+fig_returns.update_xaxes(
+    color='#cbd5e1',
+    gridcolor='#334155',
+    tickangle=-35,
+    type='category',
+    unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
+)
+
+# 수익률 차트 렌더링
+st.plotly_chart(fig_returns, use_container_width=True)
+
 # 차트 영역과 원본 데이터 확인 영역 사이 가로선
 st.divider()
 
 # ==========================================
-# 11. 하단 원본 데이터 테이블 영역
+# 12. 하단 원본 데이터 테이블 영역
 # ==========================================
 st.markdown(
     "<h2 class='section-title'>📋 SKHY(ADR) 프리미엄 원본 데이터 확인</h2>",
