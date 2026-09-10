@@ -423,7 +423,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
                 color=bar_colors,
                 line=dict(color=bar_border_colors, width=1.2)
             ),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_prem,
             opacity=0.85
         ),
@@ -439,7 +439,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
             mode='lines+markers',
             line=dict(color='#38bdf8', width=2.8),
             marker=dict(size=5, color='#38bdf8'),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_sk
         ),
         secondary_y=False
@@ -454,7 +454,7 @@ if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
             mode='lines+markers',
             line=dict(color='#fb923c', width=2.8),
             marker=dict(size=5, color='#fb923c'),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_skhy
         ),
         secondary_y=False
@@ -470,7 +470,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             mode='lines+markers',
             line=dict(color='#38bdf8', width=2.8),
             marker=dict(size=5),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_sk
         ),
         secondary_y=False
@@ -483,7 +483,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             mode='lines+markers',
             line=dict(color='#fb923c', width=2.8),
             marker=dict(size=5),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_skhy
         ),
         secondary_y=False
@@ -496,7 +496,7 @@ elif chart_style == "주가 꺾은선 + 프리미엄 꺾은선":
             mode='lines+markers',
             line=dict(color='#34d399', width=2.5, dash='dot'),
             marker=dict(size=6, symbol='diamond', color='#34d399'),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_prem
         ),
         secondary_y=True
@@ -510,7 +510,7 @@ else:
             y=df['SK_KRW'],
             name="SK하이닉스 (원)",
             marker=dict(color='rgba(56, 189, 248, 0.7)', line=dict(color='#38bdf8', width=1)),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_sk
         ),
         secondary_y=False
@@ -521,7 +521,7 @@ else:
             y=df['SKHY_KRW'],
             name="SKHY 환산주가 ($×10×환율)",
             marker=dict(color='rgba(251, 146, 60, 0.7)', line=dict(color='#fb923c', width=1)),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_skhy
         ),
         secondary_y=False
@@ -534,7 +534,7 @@ else:
             mode='lines+markers',
             line=dict(color='#34d399', width=3),
             marker=dict(size=7, color='#34d399'),
-            hoverinfo="text",
+            hoverinfo="x+name+text",
             hovertext=hover_prem
         ),
         secondary_y=True
@@ -613,7 +613,8 @@ fig.update_xaxes(
     color='#cbd5e1',
     gridcolor='#334155',
     tickangle=-35,
-    type='category'
+    type='category',
+    unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
 )
 
 # 차트 렌더링
@@ -639,7 +640,7 @@ fig_prices.add_trace(
         mode='lines+markers',
         line=dict(color='#38bdf8', width=2.8),
         marker=dict(size=5, color='#38bdf8'),
-        hoverinfo="text",
+        hoverinfo="x+name+text",
         hovertext=hover_sk_price
     ),
     secondary_y=False
@@ -655,7 +656,7 @@ fig_prices.add_trace(
         mode='lines+markers',
         line=dict(color='#a78bfa', width=2.8),
         marker=dict(size=5, color='#a78bfa'),
-        hoverinfo="text",
+        hoverinfo="x+name+text",
         hovertext=hover_skhy_usd
     ),
     secondary_y=True
@@ -714,7 +715,8 @@ fig_prices.update_xaxes(
     color='#cbd5e1',
     gridcolor='#334155',
     tickangle=-35,
-    type='category'
+    type='category',
+    unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
 )
 
 # 주가 비교 차트 렌더링
