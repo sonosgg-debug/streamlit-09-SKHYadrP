@@ -261,7 +261,7 @@ with st.sidebar:
     chart_style = st.radio(
         "차트 유형 선택",
         options=[
-            "주가 꺾은선 + 프리미엄 막대 (강력 추천)",
+            "주가 꺾은선 + 프리미엄 막대 (추천)",
             "주가 꺾은선 + 프리미엄 꺾은선",
             "주가 그룹 막대 + 프리미엄 꺾은선"
         ],
@@ -413,8 +413,8 @@ bar_border_colors = [
 # 보조 축을 포함하는 Figure 생성
 fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-# 1) 주가 꺾은선 + 프리미엄 막대 (강력 추천 / 기본 요청)
-if chart_style == "주가 꺾은선 + 프리미엄 막대 (강력 추천)":
+# 1) 주가 꺾은선 + 프리미엄 막대 (추천 / 기본 요청)
+if chart_style == "주가 꺾은선 + 프리미엄 막대 (추천)":
     # 3번 데이터: 프리미엄 백분율(%) 막대 그래프 (보조 Y축)
     fig.add_trace(
         go.Bar(
