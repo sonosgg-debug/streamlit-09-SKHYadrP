@@ -45,7 +45,7 @@ st.markdown("""
     [data-testid="stMainBlockContainer"] {
         padding-top: 2.2rem !important;
         padding-bottom: 3.5rem !important;
-        max-width: 1440px;
+        max-width: 100% !important;
     }
     
     /* 사이드바 스타일링 */
