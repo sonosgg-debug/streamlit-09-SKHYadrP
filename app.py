@@ -265,9 +265,9 @@ st.markdown("""
 # 3. 데이터 캐싱 로더
 # ==========================================
 @st.cache_data(ttl=600, show_spinner=False)
-def load_data(start_d: datetime.date, end_d: datetime.date) -> pd.DataFrame:
+def load_data(start_d: datetime.date, end_d: datetime.date, include_live: bool = False) -> pd.DataFrame:
     """데이터 수집 및 캐싱 (10분 TTL)"""
-    return fetch_skhy_data(start_d, end_d)
+    return fetch_skhy_data(start_d, end_d, include_live=include_live)
 
 # ==========================================
 # 4. 세션 상태(Session State) 초기화
@@ -278,6 +278,8 @@ if 'start_date' not in st.session_state:
     st.session_state.start_date = DEFAULT_3M_START_DATE
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.date.today()
+if 'selected_preset' not in st.session_state:
+    st.session_state.selected_preset = "3개월"
 
 # ==========================================
 # 5. 대시보드 왼쪽 (사이드바 제어 패널)
@@ -308,31 +310,82 @@ with st.sidebar:
     st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 기간 선택</div>", unsafe_allow_html=True)
     preset_c1, preset_c2, preset_c3 = st.columns(3)
     with preset_c1:
-        if st.button("전체", use_container_width=True, help="상장일(7/13)부터 현재까지"):
+        is_all = (st.session_state.get('selected_preset') == "전체")
+        if st.button("전체", type="primary" if is_all else "secondary", use_container_width=True, help="상장일(7/13)부터 현재까지"):
+            st.session_state.selected_preset = "전체"
             st.session_state.start_date = DEFAULT_START_DATE
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c2:
-        if st.button("3개월", use_container_width=True, help="최근 90일"):
+        is_3m = (st.session_state.get('selected_preset') == "3개월")
+        if st.button("3개월", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 90일 (상장일 2026-07-13 이후 데이터)"):
+            st.session_state.selected_preset = "3개월"
             st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c3:
-        if st.button("1개월", use_container_width=True, help="최근 30일"):
+        is_1m = (st.session_state.get('selected_preset') == "1개월")
+        if st.button("1개월", type="primary" if is_1m else "secondary", use_container_width=True, help="최근 30일"):
+            st.session_state.selected_preset = "1개월"
             st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=30))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
 
+    # 상장 경과일 안내 (3개월과 전체가 현재 동일한 기간임을 친절히 안내)
+    days_since_listing = (datetime.date.today() - DEFAULT_START_DATE).days
+    if days_since_listing < 90:
+        st.caption(f"💡 현재 상장 {days_since_listing}일차로, '3개월'과 '전체'는 상장일(7/13) 이후 동일한 전체 기간이 조회됩니다.")
+
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-    # 조회 버튼
-    submit_btn = st.button("🔍 조회", type="primary", use_container_width=True)
-    if submit_btn:
-        st.session_state.start_date = input_start_date
-        st.session_state.end_date = input_end_date
-        st.rerun()
+    # 조회 및 새로고침 버튼
+    btn_col1, btn_col2 = st.columns([1, 1])
+    with btn_col1:
+        submit_btn = st.button("🔍 조회", type="primary", use_container_width=True)
+        if submit_btn:
+            st.session_state.start_date = input_start_date
+            st.session_state.end_date = input_end_date
+            
+            d_today = datetime.date.today()
+            d_all = DEFAULT_START_DATE
+            d_3m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=90))
+            d_1m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=30))
+            
+            if input_end_date == d_today and input_start_date == d_1m:
+                st.session_state.selected_preset = "1개월"
+            elif input_end_date == d_today and input_start_date == d_3m:
+                if st.session_state.get('selected_preset') not in ["전체", "3개월"]:
+                    st.session_state.selected_preset = "3개월"
+            elif input_end_date == d_today and input_start_date == d_all:
+                st.session_state.selected_preset = "전체"
+            else:
+                st.session_state.selected_preset = "사용자 지정"
+            st.rerun()
+    with btn_col2:
+        refresh_btn = st.button("🔄 새로고침", use_container_width=True, help="캐시를 비우고 최신 시세를 다시 수집합니다.")
+        if refresh_btn:
+            st.cache_data.clear()
+            st.session_state.start_date = input_start_date
+            st.session_state.end_date = input_end_date
+            st.rerun()
         
     st.markdown("---")
+    
+    # [데이터 수집 기준: 공식 마감 종가 vs 장중 실시간 포함]
+    st.markdown("<div style='font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 6px;'>⚖️ 데이터 수집 기준</div>", unsafe_allow_html=True)
+    data_mode = st.radio(
+        "데이터 수집 기준 선택",
+        options=[
+            "공식 마감 종가 기준 (권장)",
+            "장중 실시간 포함 (오늘 장중 추정치)"
+        ],
+        index=0,
+        label_visibility="collapsed",
+        help="• 공식 마감 종가 기준: 양 시장 정규장이 모두 마감 확정된 종가만 1:1로 비교합니다 (시차 왜곡 없음, 완벽한 정합성).\n• 장중 실시간 포함: 오늘 한국 장중 실시간가와 미국 직전 마감 종가를 비교합니다."
+    )
+    include_live_selected = ("실시간" in data_mode)
+    
+    st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
     
     # [시각화 옵션: 사용자 질문에 따른 차트 표현 방식 선택]
     st.markdown("<div style='font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 6px;'>📊 차트 표현 방식</div>", unsafe_allow_html=True)
@@ -403,7 +456,7 @@ if start_query > end_query:
 
 with st.spinner("최신 주가 및 환율 데이터를 집계하는 중입니다..."):
     try:
-        df = load_data(start_query, end_query)
+        df = load_data(start_query, end_query, include_live=include_live_selected)
     except Exception as e:
         st.error(f"데이터를 불러오는 중 오류가 발생했습니다: {e}")
         st.stop()
@@ -430,17 +483,23 @@ delta_sign = "▲" if delta_pct > 0 else ("▼" if delta_pct < 0 else "─")
 delta_color_cls = "kpi-highlight-green" if delta_pct >= 0 else "kpi-highlight-orange"
 delta_str = f"{delta_sign} {abs(delta_pct):.2f}%p (전일비)"
 
+is_today_live = (stats['latest_date'] == datetime.date.today()) and include_live_selected
+sk_label = "🇰🇷 SK하이닉스 (장중 실시간)" if is_today_live else "🇰🇷 SK하이닉스 종가"
+sk_sub = f"기준일: {latest_date_str} (장중)" if is_today_live else f"기준일: {latest_date_str}"
+skhy_sub = f"환율: {usdkrw_str} (전일 마감 대비)" if is_today_live else f"환율: {usdkrw_str}"
+prem_label = "⚡ 장중 실시간 프리미엄" if is_today_live else "🎯 최신 ADR 프리미엄"
+
 st.markdown(f"""
 <div class='kpi-container'>
     <div class='kpi-card'>
-        <div class='kpi-label'>🇰🇷 SK하이닉스 종가</div>
+        <div class='kpi-label'>{sk_label}</div>
         <div class='kpi-value kpi-highlight-blue'>{sk_krw_str}</div>
-        <div class='kpi-subtext'>기준일: {latest_date_str}</div>
+        <div class='kpi-subtext'>{sk_sub}</div>
     </div>
     <div class='kpi-card'>
         <div class='kpi-label'>🇺🇸 SKHY (나스닥)</div>
         <div class='kpi-value'>{skhy_usd_str}</div>
-        <div class='kpi-subtext'>환율: {usdkrw_str}</div>
+        <div class='kpi-subtext'>{skhy_sub}</div>
     </div>
     <div class='kpi-card'>
         <div class='kpi-label'>💵 SKHY 원화 환산가</div>
@@ -448,7 +507,7 @@ st.markdown(f"""
         <div class='kpi-subtext'>$ × 10 × 당일 환율</div>
     </div>
     <div class='kpi-card'>
-        <div class='kpi-label'>🎯 최신 ADR 프리미엄</div>
+        <div class='kpi-label'>{prem_label}</div>
         <div class='kpi-value kpi-highlight-green'>{prem_pct_str}</div>
         <div class='kpi-subtext {delta_color_cls}'>{delta_str} | {prem_krw_str}</div>
     </div>
@@ -934,7 +993,10 @@ export_df.index.name = "Date"
 
 # 화면 출력용 포맷팅
 formatted_table = pd.DataFrame(index=df_display.index)
-formatted_table['일자'] = [d.strftime('%Y-%m-%d') for d in df_display.index]
+formatted_table['일자'] = [
+    f"{d.strftime('%Y-%m-%d')} (장중)" if (d == datetime.date.today() and include_live_selected) else d.strftime('%Y-%m-%d')
+    for d in df_display.index
+]
 formatted_table['SK하이닉스 (원)'] = df_display['SK_KRW'].apply(lambda x: f"₩{int(x):,}")
 formatted_table['SKHY ($)'] = df_display['SKHY_USD'].apply(lambda x: f"${x:.2f}")
 formatted_table['원/달러 환율'] = df_display['USDKRW'].apply(lambda x: f"₩{x:,.2f}")

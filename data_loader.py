@@ -1,10 +1,10 @@
-import os
 import datetime
 import re
 import logging
 import pandas as pd
 import yfinance as yf
 import requests
+import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,6 +14,8 @@ DEFAULT_START_DATE = datetime.date(2026, 7, 13)
 def download_ticker_yf(ticker: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
     """
     yfinance를 통해 티커의 종가(Close) 데이터를 다운로드합니다.
+    Yahoo Finance에서 최근 거래일의 일봉 Close가 None/NaN으로 반환되는 현상을 감지하여
+    Ticker의 1일 시세(history 1d) 및 fast_info(last_price)로 정합성을 자동 보정합니다.
     """
     # yfinance end_date는 exclusive이므로 +1일
     start_str = start_date.strftime('%Y-%m-%d')
@@ -23,104 +25,168 @@ def download_ticker_yf(ticker: str, start_date: datetime.date, end_date: datetim
     try:
         df = yf.download(ticker, start=start_str, end=end_str, progress=False)
         if df.empty:
-            logging.warning(f"{ticker} 데이터가 비어있습니다.")
-            return pd.Series(dtype=float, name=ticker)
-            
-        if isinstance(df.columns, pd.MultiIndex):
-            if 'Close' in df.columns.levels[0]:
-                ticker_cols = [c for c in df['Close'].columns if ticker in c or c in ticker]
-                if ticker_cols:
-                    s = df['Close'][ticker_cols[0]]
-                else:
-                    s = df['Close'].iloc[:, 0]
-            else:
-                s = df.iloc[:, 0]
+            logging.warning(f"{ticker} yf.download 데이터가 비어있습니다.")
+            s = pd.Series(dtype=float, name=ticker)
         else:
-            if 'Close' in df.columns:
-                s = df['Close']
+            if isinstance(df.columns, pd.MultiIndex):
+                if 'Close' in df.columns.levels[0]:
+                    ticker_cols = [c for c in df['Close'].columns if ticker in c or c in ticker]
+                    s = df['Close'][ticker_cols[0]] if ticker_cols else df['Close'].iloc[:, 0]
+                else:
+                    s = df.iloc[:, 0]
             else:
-                s = df.iloc[:, 0]
-                
-        s = s.dropna()
-        s.index = pd.to_datetime(s.index).date
+                s = df['Close'] if 'Close' in df.columns else df.iloc[:, 0]
+            s = s.copy()
+            s.index = pd.to_datetime(s.index).date
+
+        # 최신 거래일 종가 누락/NaN 보정 로직
+        try:
+            t = yf.Ticker(ticker)
+            # 1. Ticker.history(period='1d') 확인 (장 마감 직후 일봉 미확정 시 정규장 종가 반영)
+            h1 = t.history(period='1d')
+            if not h1.empty:
+                h1_date = h1.index[-1].date()
+                h1_close = float(h1['Close'].iloc[-1])
+                if pd.notna(h1_close) and h1_close > 0:
+                    if h1_date in s.index:
+                        if pd.isna(s.loc[h1_date]):
+                            logging.info(f"[{ticker}] {h1_date} 누락 종가를 history(1d) 종가({h1_close})로 보정합니다.")
+                            s.loc[h1_date] = h1_close
+                    elif start_date <= h1_date <= end_date:
+                        logging.info(f"[{ticker}] {h1_date} 누락 거래일을 history(1d) 종가({h1_close})로 추가합니다.")
+                        s.loc[h1_date] = h1_close
+
+            # 2. fast_info last_price 확인 (여전히 마지막 값이 NaN인 경우)
+            if hasattr(t, 'fast_info'):
+                last_p = getattr(t.fast_info, 'last_price', None)
+                if last_p and pd.notna(last_p) and float(last_p) > 0:
+                    if not s.empty and pd.isna(s.iloc[-1]):
+                        logging.info(f"[{ticker}] 마지막 행 NaN을 fast_info.last_price({last_p})로 보정합니다.")
+                        s.iloc[-1] = float(last_p)
+        except Exception as repair_err:
+            logging.warning(f"[{ticker}] 최신 종가 보정 중 예외 발생 (무시하고 계속 진행): {repair_err}")
+
+        s = s.dropna().sort_index()
+        s = s[~s.index.duplicated(keep='last')]
         s.name = ticker
         return s
     except Exception as e:
         logging.error(f"yfinance 다운로드 실패 ({ticker}): {e}")
         return pd.Series(dtype=float, name=ticker)
 
-def download_naver_sise(code: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
+def download_naver_fchart(code: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
     """
-    네이버 금융 일별시세에서 국내 종목 코드의 종가를 크롤링합니다 (Fallback용).
+    네이버 금융 공식 fchart API에서 국내 종목의 일별 공식 종가를 가져옵니다.
+    KRX 동시호가 체결가 및 실시간 종가가 정확히 반영됩니다.
     """
-    logging.info(f"네이버 금융 다운로드: {code} ({start_date} ~ {end_date})")
-    dates = []
-    closes = []
-    page = 1
+    logging.info(f"네이버 fchart 시세 조회: {code} ({start_date} ~ {end_date})")
+    url = f"https://fchart.stock.naver.com/sise.nhn?timeframe=day&count=1200&requestType=0&symbol={code}"
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
-    
-    while page <= 40:
-        url = f"https://finance.naver.com/item/sise_day.naver?code={code}&page={page}"
-        try:
-            res = requests.get(url, headers=headers, timeout=5)
-            if res.status_code != 200:
-                break
-            soup = BeautifulSoup(res.text, 'html.parser')
-            table = soup.find('table', class_='type2')
-            if not table:
-                break
-            rows = table.find_all('tr')
-            page_has_data = False
-            reached_start = False
+    try:
+        res = requests.get(url, headers=headers, timeout=6)
+        if res.status_code != 200:
+            logging.warning(f"네이버 fchart HTTP 응답 오류: {res.status_code}")
+            return pd.Series(dtype=float, name=code)
             
-            for row in rows:
-                cells = row.find_all('td')
-                if len(cells) == 7:
-                    d_text = cells[0].text.strip()
-                    c_text = cells[1].text.strip().replace(',', '')
-                    if d_text and c_text:
-                        dt = datetime.datetime.strptime(d_text, '%Y.%m.%d').date()
-                        if dt < start_date:
-                            reached_start = True
-                            break
-                        if dt <= end_date:
-                            dates.append(dt)
-                            closes.append(float(c_text))
-                            page_has_data = True
-            if reached_start or not page_has_data:
-                break
-            page += 1
-        except Exception as e:
-            logging.error(f"네이버 금융 파싱 에러 (page {page}): {e}")
-            break
+        root = ET.fromstring(res.text)
+        items = root.findall('.//item')
+        data = []
+        for it in items:
+            val = it.get('data')
+            if not val:
+                continue
+            parts = val.split('|')
+            # 형태: YYYYMMDD|Open|High|Low|Close|Volume
+            if len(parts) >= 5:
+                try:
+                    dt = datetime.datetime.strptime(parts[0], '%Y%m%d').date()
+                    if start_date <= dt <= end_date:
+                        close = float(parts[4])
+                        data.append((dt, close))
+                except ValueError:
+                    continue
+                    
+        if not data:
+            logging.warning(f"네이버 fchart 파싱 결과 데이터 없음: {code}")
+            return pd.Series(dtype=float, name=code)
             
-    if not dates:
+        df = pd.DataFrame(data, columns=['Date', code]).set_index('Date').sort_index()
+        s = df[code].astype(float)
+        s = s[~s.index.duplicated(keep='last')]
+        return s
+    except Exception as e:
+        logging.error(f"네이버 fchart 조회 에러 ({code}): {e}")
         return pd.Series(dtype=float, name=code)
-        
-    s = pd.Series(closes, index=dates, name=code).sort_index()
-    s = s[~s.index.duplicated(keep='first')]
-    return s
 
-def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date) -> pd.DataFrame:
+def download_sk_domestic(start_date: datetime.date, end_date: datetime.date) -> pd.Series:
+    """
+    국내 SK하이닉스(000660) 종가를 공식 국내 금융 소스로부터 수집합니다.
+    1순위: FinanceDataReader (네이버/KRX 연동)
+    2순위: 네이버 fchart API 직접 호출
+    3순위: pykrx 라이브러리
+    4순위: yfinance (000660.KS - 동시호가 반영 지연 가능성 존재)
+    """
+    # 1순위: FinanceDataReader
+    try:
+        import FinanceDataReader as fdr
+        df = fdr.DataReader('000660', start_date, end_date)
+        if not df.empty and 'Close' in df.columns:
+            s = df['Close'].astype(float).copy()
+            s.index = pd.to_datetime(s.index).date
+            s.name = '000660'
+            s = s[~s.index.duplicated(keep='last')]
+            if len(s) >= 1:
+                logging.info(f"SK하이닉스 FinanceDataReader 수집 성공 ({len(s)}건)")
+                return s
+    except Exception as e:
+        logging.warning(f"FinanceDataReader 수집 실패: {e}")
+
+    # 2순위: 네이버 fchart API
+    s = download_naver_fchart('000660', start_date, end_date)
+    if not s.empty and len(s) >= 1:
+        logging.info(f"SK하이닉스 네이버 fchart 수집 성공 ({len(s)}건)")
+        return s
+
+    # 3순위: pykrx
+    try:
+        from pykrx import stock
+        s_date_str = start_date.strftime('%Y%m%d')
+        e_date_str = end_date.strftime('%Y%m%d')
+        df_krx = stock.get_market_ohlcv_by_date(s_date_str, e_date_str, '000660')
+        if not df_krx.empty:
+            col_close = '종가' if '종가' in df_krx.columns else df_krx.columns[3]
+            s = df_krx[col_close].astype(float).copy()
+            s.index = pd.to_datetime(s.index).date
+            s.name = '000660'
+            s = s[~s.index.duplicated(keep='last')]
+            if len(s) >= 1:
+                logging.info(f"SK하이닉스 pykrx 수집 성공 ({len(s)}건)")
+                return s
+    except Exception as e:
+        logging.warning(f"pykrx 수집 실패: {e}")
+
+    # 4순위: yfinance 폴백
+    logging.warning("국내 소스 실패로 yfinance 000660.KS 폴백 시도")
+    return download_ticker_yf('000660.KS', start_date, end_date)
+
+def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date, include_live: bool = False) -> pd.DataFrame:
     """
     SKHY, KRW=X(환율), SK하이닉스(000660) 데이터를 수집하고
     정합성 정제 및 원화 환산, 프리미엄을 계산한 통합 DataFrame을 반환합니다.
+    
+    :param include_live: False(기본값)이면 양 시장 정규장이 모두 마감 확정된 공식 종가만 포함(데이터 정합성 보장),
+                         True이면 오늘 국내 장중 실시간 데이터도 포함합니다.
     """
-    # 1. 미국 SKHY 주가
+    # 1. 미국 SKHY 주가 (최신 종가 NaN 누락 자동 보정)
     s_skhy = download_ticker_yf('SKHY', start_date, end_date)
     
     # 2. USD/KRW 원달러 환율
     s_krw = download_ticker_yf('KRW=X', start_date, end_date)
     
-    # 3. 국내 SK하이닉스 주가 (yfinance 우선, 누락 시 네이버 금융 폴백)
-    s_sk = download_ticker_yf('000660.KS', start_date, end_date)
-    if s_sk.empty or len(s_sk) < 5:
-        logging.info("SK하이닉스 yfinance 데이터 불충분으로 네이버 금융 수집 시도...")
-        s_naver = download_naver_sise('000660', start_date, end_date)
-        if not s_naver.empty:
-            s_sk = s_naver
+    # 3. 국내 SK하이닉스 주가 (KRX/네이버 공식 종가 우선)
+    s_sk = download_sk_domestic(start_date, end_date)
 
     # 4. 결합 및 전처리
     df = pd.concat([s_skhy, s_krw, s_sk], axis=1)
@@ -128,6 +194,14 @@ def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date) -> pd.Da
     
     # 두 주식 시장 중 최소 한 곳이라도 개장한 날 보존
     df = df.dropna(subset=['SKHY_USD', 'SK_KRW'], how='all')
+    
+    # [데이터 정합성 보장 로직]
+    # 공식 마감 종가 기준(include_live=False)인 경우:
+    # 당일(Today)처럼 아직 미국 정규장(또는 국내 정규장)이 마감되지 않은 미완성 장중 거래일은 제외하고,
+    # 양국 모두 정규장 마감 종가가 확정된 거래일까지만 반영하여 1:1 정합성을 유지합니다.
+    if not include_live:
+        today = datetime.date.today()
+        df = df[df.index < today]
     
     # 시계열 오름차순 정렬 후 양국 공휴일/영업일 차이 Forward Fill
     df = df.sort_index(ascending=True)
