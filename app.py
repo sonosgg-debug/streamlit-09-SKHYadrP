@@ -279,7 +279,7 @@ if 'start_date' not in st.session_state:
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.date.today()
 if 'selected_preset' not in st.session_state:
-    st.session_state.selected_preset = "3개월"
+    st.session_state.selected_preset = "3M"
 
 # ==========================================
 # 5. 대시보드 왼쪽 (사이드바 제어 패널)
@@ -295,7 +295,7 @@ with st.sidebar:
         value=st.session_state.start_date,
         min_value=datetime.date(2026, 1, 1),
         max_value=datetime.date.today(),
-        help="최근 3개월(또는 상장일 2026-07-13)이 기본값입니다."
+        help="최근 3개월(3M, 또는 상장일 2026-07-13)이 기본값입니다."
     )
     
     input_end_date = st.date_input(
@@ -308,33 +308,42 @@ with st.sidebar:
     
     # 빠른 날짜 선택 프리셋 버튼
     st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 기간 선택</div>", unsafe_allow_html=True)
-    preset_c1, preset_c2, preset_c3 = st.columns(3)
+    preset_c1, preset_c2, preset_c3, preset_c4 = st.columns(4)
     with preset_c1:
-        is_all = (st.session_state.get('selected_preset') == "전체")
-        if st.button("전체", type="primary" if is_all else "secondary", use_container_width=True, help="상장일(7/13)부터 현재까지"):
-            st.session_state.selected_preset = "전체"
+        is_all = (st.session_state.get('selected_preset') == "ALL")
+        if st.button("ALL", type="primary" if is_all else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
+            st.session_state.selected_preset = "ALL"
             st.session_state.start_date = DEFAULT_START_DATE
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c2:
-        is_3m = (st.session_state.get('selected_preset') == "3개월")
-        if st.button("3개월", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 90일 (상장일 2026-07-13 이후 데이터)"):
-            st.session_state.selected_preset = "3개월"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
+        is_1y = (st.session_state.get('selected_preset') == "1Y")
+        if st.button("1Y", type="primary" if is_1y else "secondary", use_container_width=True, help="최근 1년 (365일)"):
+            st.session_state.selected_preset = "1Y"
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=365))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c3:
-        is_1m = (st.session_state.get('selected_preset') == "1개월")
-        if st.button("1개월", type="primary" if is_1m else "secondary", use_container_width=True, help="최근 30일"):
-            st.session_state.selected_preset = "1개월"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=30))
+        is_6m = (st.session_state.get('selected_preset') == "6M")
+        if st.button("6M", type="primary" if is_6m else "secondary", use_container_width=True, help="최근 6개월 (180일)"):
+            st.session_state.selected_preset = "6M"
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=180))
+            st.session_state.end_date = datetime.date.today()
+            st.rerun()
+    with preset_c4:
+        is_3m = (st.session_state.get('selected_preset') == "3M")
+        if st.button("3M", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 3개월 (90일)"):
+            st.session_state.selected_preset = "3M"
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
 
-    # 상장 경과일 안내 (3개월과 전체가 현재 동일한 기간임을 친절히 안내)
+    # 상장 경과일 안내 (상장 초기에는 복수 프리셋이 상장일 이후 동일한 전체 기간으로 조회될 수 있음을 안내)
     days_since_listing = (datetime.date.today() - DEFAULT_START_DATE).days
     if days_since_listing < 90:
-        st.caption(f"💡 현재 상장 {days_since_listing}일차로, '3개월'과 '전체'는 상장일(7/13) 이후 동일한 전체 기간이 조회됩니다.")
+        st.caption(f"💡 현재 상장 {days_since_listing}일차로, 상장일(7/13) 이후 전체 기간 데이터가 공통으로 조회됩니다.")
+    elif days_since_listing < 365:
+        st.caption(f"💡 현재 상장 {days_since_listing}일차로, 1년(1Y) 프리셋은 상장일(7/13)부터 조회됩니다.")
 
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
@@ -348,16 +357,31 @@ with st.sidebar:
             
             d_today = datetime.date.today()
             d_all = DEFAULT_START_DATE
+            d_1y = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=365))
+            d_6m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=180))
             d_3m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=90))
-            d_1m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=30))
             
-            if input_end_date == d_today and input_start_date == d_1m:
-                st.session_state.selected_preset = "1개월"
-            elif input_end_date == d_today and input_start_date == d_3m:
-                if st.session_state.get('selected_preset') not in ["전체", "3개월"]:
-                    st.session_state.selected_preset = "3개월"
-            elif input_end_date == d_today and input_start_date == d_all:
-                st.session_state.selected_preset = "전체"
+            curr_preset = st.session_state.get('selected_preset')
+            preset_map = {
+                "3M": d_3m,
+                "6M": d_6m,
+                "1Y": d_1y,
+                "ALL": d_all,
+            }
+            
+            if input_end_date == d_today:
+                if curr_preset in preset_map and input_start_date == preset_map[curr_preset]:
+                    st.session_state.selected_preset = curr_preset
+                elif input_start_date == d_3m:
+                    st.session_state.selected_preset = "3M"
+                elif input_start_date == d_6m:
+                    st.session_state.selected_preset = "6M"
+                elif input_start_date == d_1y:
+                    st.session_state.selected_preset = "1Y"
+                elif input_start_date == d_all:
+                    st.session_state.selected_preset = "ALL"
+                else:
+                    st.session_state.selected_preset = "사용자 지정"
             else:
                 st.session_state.selected_preset = "사용자 지정"
             st.rerun()
