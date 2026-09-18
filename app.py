@@ -23,7 +23,7 @@ def get_logo_html(height: int = 46) -> str:
 # ==========================================
 st.set_page_config(
     page_title="SKHY(ADR) 프리미엄 추이",
-    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else "📈",
+    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
