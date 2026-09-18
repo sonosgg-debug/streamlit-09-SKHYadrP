@@ -465,7 +465,7 @@ st.markdown(
     "<div class='dashboard-subtitle'>"
     "미국 나스닥 <b>SKHY</b>와 국내 증시 <b>SK하이닉스</b>의 주가를 비교하고, "
     "실시간 환율을 반영한 원화 환산 주가(<code>달러 주가 × 10 × 당일 환율</code>) 및 "
-    "<b>ADR 프리미엄(괴리율)</b>의 변동 추이를 추적하는 대시보드입니다."
+    "<b>ADR 프리미엄(괴리율)</b>의 변동 추이를 추적합니다."
     "</div>",
     unsafe_allow_html=True
 )
