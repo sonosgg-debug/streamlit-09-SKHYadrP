@@ -278,7 +278,7 @@ if 'start_date' not in st.session_state:
     st.session_state.start_date = DEFAULT_3M_START_DATE
 if 'end_date' not in st.session_state:
     st.session_state.end_date = datetime.date.today()
-if 'selected_preset' not in st.session_state:
+if 'selected_preset' not in st.session_state or st.session_state.selected_preset == "ALL":
     st.session_state.selected_preset = "3M"
 
 # ==========================================
@@ -310,9 +310,9 @@ with st.sidebar:
     st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 기간 선택</div>", unsafe_allow_html=True)
     preset_c1, preset_c2, preset_c3, preset_c4 = st.columns(4)
     with preset_c1:
-        is_all = (st.session_state.get('selected_preset') == "ALL")
-        if st.button("ALL", type="primary" if is_all else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
-            st.session_state.selected_preset = "ALL"
+        is_max = (st.session_state.get('selected_preset') == "MAX")
+        if st.button("MAX", type="primary" if is_max else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
+            st.session_state.selected_preset = "MAX"
             st.session_state.start_date = DEFAULT_START_DATE
             st.session_state.end_date = datetime.date.today()
             st.rerun()
@@ -356,7 +356,7 @@ with st.sidebar:
             st.session_state.end_date = input_end_date
             
             d_today = datetime.date.today()
-            d_all = DEFAULT_START_DATE
+            d_max = DEFAULT_START_DATE
             d_1y = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=365))
             d_6m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=180))
             d_3m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=90))
@@ -366,7 +366,7 @@ with st.sidebar:
                 "3M": d_3m,
                 "6M": d_6m,
                 "1Y": d_1y,
-                "ALL": d_all,
+                "MAX": d_max,
             }
             
             if input_end_date == d_today:
@@ -378,8 +378,8 @@ with st.sidebar:
                     st.session_state.selected_preset = "6M"
                 elif input_start_date == d_1y:
                     st.session_state.selected_preset = "1Y"
-                elif input_start_date == d_all:
-                    st.session_state.selected_preset = "ALL"
+                elif input_start_date == d_max:
+                    st.session_state.selected_preset = "MAX"
                 else:
                     st.session_state.selected_preset = "사용자 지정"
             else:
@@ -776,6 +776,7 @@ fig.update_xaxes(
     color='#cbd5e1',
     gridcolor='#334155',
     tickangle=-35,
+    tickfont=dict(size=11),
     type='category',
     unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
 )
@@ -878,6 +879,7 @@ fig_prices.update_xaxes(
     color='#cbd5e1',
     gridcolor='#334155',
     tickangle=-35,
+    tickfont=dict(size=11),
     type='category',
     unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
 )
@@ -990,6 +992,7 @@ fig_returns.update_xaxes(
     color='#cbd5e1',
     gridcolor='#334155',
     tickangle=-35,
+    tickfont=dict(size=11),
     type='category',
     unifiedhovertitle=dict(text="<b>📅 %{x}</b>")
 )
