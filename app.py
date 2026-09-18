@@ -57,12 +57,14 @@ st.markdown("""
     /* 제목 폰트 색상 (00 Bookmarks 공식 타이틀 색상: #8AB4F8) */
     .dashboard-title {
         color: #8AB4F8 !important;
-        font-size: 2.2rem !important;
+        font-size: 1.9rem !important;
         font-weight: 800 !important;
         letter-spacing: -0.5px;
         margin: 0 0 6px 0;
         display: flex;
         align-items: center;
+        justify-content: center;
+        text-align: center;
         gap: 12px;
     }
     
@@ -82,6 +84,7 @@ st.markdown("""
         color: #94a3b8;
         font-size: 0.95rem;
         line-height: 1.5;
+        text-align: center;
         margin-bottom: 24px;
     }
 
