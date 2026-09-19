@@ -1056,7 +1056,7 @@ with tb_col3:
     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
         export_df.to_excel(writer, sheet_name='SKHY_Premium')
     st.download_button(
-        label="📊 Excel 다운로드",
+        label="📥 엑셀 파일 다운로드",
         data=excel_buffer.getvalue(),
         file_name=f"SKHY_Premium_{start_query}_{end_query}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
