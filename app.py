@@ -350,9 +350,16 @@ with st.sidebar:
 
     st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-    # 조회 및 새로고침 버튼
+    # Update 및 조회 버튼
     btn_col1, btn_col2 = st.columns([1, 1])
     with btn_col1:
+        refresh_btn = st.button("🔄 Update", use_container_width=True, help="캐시를 비우고 최신 시세를 다시 수집합니다.")
+        if refresh_btn:
+            st.cache_data.clear()
+            st.session_state.start_date = input_start_date
+            st.session_state.end_date = input_end_date
+            st.rerun()
+    with btn_col2:
         submit_btn = st.button("🔍 조회", type="primary", use_container_width=True)
         if submit_btn:
             st.session_state.start_date = input_start_date
@@ -387,13 +394,6 @@ with st.sidebar:
                     st.session_state.selected_preset = "사용자 지정"
             else:
                 st.session_state.selected_preset = "사용자 지정"
-            st.rerun()
-    with btn_col2:
-        refresh_btn = st.button("🔄 새로고침", use_container_width=True, help="캐시를 비우고 최신 시세를 다시 수집합니다.")
-        if refresh_btn:
-            st.cache_data.clear()
-            st.session_state.start_date = input_start_date
-            st.session_state.end_date = input_end_date
             st.rerun()
         
     st.markdown("---")
