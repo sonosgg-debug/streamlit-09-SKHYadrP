@@ -43,7 +43,7 @@ st.markdown("""
     /* 상단 여백 최적화 */
     .main .block-container,
     [data-testid="stMainBlockContainer"] {
-        padding-top: 2.2rem !important;
+        padding-top: 2.0rem !important;
         padding-bottom: 3.5rem !important;
         max-width: 100% !important;
     }
@@ -57,7 +57,7 @@ st.markdown("""
     /* 제목 폰트 색상 (00 Bookmarks 공식 타이틀 색상: #8AB4F8) */
     .dashboard-title {
         color: #8AB4F8 !important;
-        font-size: 1.9rem !important;
+        font-size: 2.0rem !important;
         font-weight: 800 !important;
         letter-spacing: -0.5px;
         margin: 0 0 6px 0;
@@ -313,31 +313,31 @@ with st.sidebar:
     st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 기간 선택</div>", unsafe_allow_html=True)
     preset_c1, preset_c2, preset_c3, preset_c4 = st.columns(4)
     with preset_c1:
-        is_max = (st.session_state.get('selected_preset') == "MAX")
-        if st.button("MAX", type="primary" if is_max else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
-            st.session_state.selected_preset = "MAX"
-            st.session_state.start_date = DEFAULT_START_DATE
+        is_3m = (st.session_state.get('selected_preset') == "3M")
+        if st.button("3M", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 3개월 (90일)"):
+            st.session_state.selected_preset = "3M"
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
     with preset_c2:
-        is_1y = (st.session_state.get('selected_preset') == "1Y")
-        if st.button("1Y", type="primary" if is_1y else "secondary", use_container_width=True, help="최근 1년 (365일)"):
-            st.session_state.selected_preset = "1Y"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=365))
-            st.session_state.end_date = datetime.date.today()
-            st.rerun()
-    with preset_c3:
         is_6m = (st.session_state.get('selected_preset') == "6M")
         if st.button("6M", type="primary" if is_6m else "secondary", use_container_width=True, help="최근 6개월 (180일)"):
             st.session_state.selected_preset = "6M"
             st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=180))
             st.session_state.end_date = datetime.date.today()
             st.rerun()
+    with preset_c3:
+        is_1y = (st.session_state.get('selected_preset') == "1Y")
+        if st.button("1Y", type="primary" if is_1y else "secondary", use_container_width=True, help="최근 1년 (365일)"):
+            st.session_state.selected_preset = "1Y"
+            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=365))
+            st.session_state.end_date = datetime.date.today()
+            st.rerun()
     with preset_c4:
-        is_3m = (st.session_state.get('selected_preset') == "3M")
-        if st.button("3M", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 3개월 (90일)"):
-            st.session_state.selected_preset = "3M"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
+        is_max = (st.session_state.get('selected_preset') == "MAX")
+        if st.button("MAX", type="primary" if is_max else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
+            st.session_state.selected_preset = "MAX"
+            st.session_state.start_date = DEFAULT_START_DATE
             st.session_state.end_date = datetime.date.today()
             st.rerun()
 
@@ -1068,4 +1068,13 @@ st.dataframe(
     formatted_table.reset_index(drop=True),
     use_container_width=True,
     height=420
+)
+
+# 하단 투자 유의사항 공통 푸터
+st.markdown("<hr style='border: 0; height: 1px; background-color: #334155; margin: 30px 0 10px 0;'>", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align: center; color: #64748b; font-size: 0.8rem; margin-top: 8px; margin-bottom: 24px; line-height: 1.6;'>"
+    "⚠️ 본 서비스에서 제공하는 모든 정보는 투자 참고용이며, 투자의 최종 결정과 책임은 투자자 본인에게 있습니다."
+    "</div>",
+    unsafe_allow_html=True
 )
