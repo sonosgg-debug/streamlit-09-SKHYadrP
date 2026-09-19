@@ -1043,7 +1043,7 @@ with tb_col2:
     # CSV 다운로드
     csv_data = export_df.to_csv(encoding='utf-8-sig').encode('utf-8-sig')
     st.download_button(
-        label="📥 CSV 다운로드",
+        label="📥 CSV 파일 다운로드",
         data=csv_data,
         file_name=f"SKHY_Premium_{start_query}_{end_query}.csv",
         mime="text/csv",
