@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+DEFAULT_START_DATE = datetime.date(2026, 7, 13)
+
 def get_now_kst_date() -> datetime.date:
     """한국 표준시(KST, UTC+9) 기준 현재 날짜(datetime.date)를 반환합니다."""
     now_utc = datetime.datetime.now(datetime.timezone.utc)
