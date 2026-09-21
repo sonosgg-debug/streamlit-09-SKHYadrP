@@ -7,7 +7,7 @@ import io
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from data_loader import fetch_skhy_data, get_summary_stats, DEFAULT_START_DATE
+from data_loader import fetch_skhy_data, get_summary_stats, DEFAULT_START_DATE, get_now_kst_date, get_latest_business_date
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "sk_hynix_logo.png")
 
@@ -275,12 +275,12 @@ def load_data(start_d: datetime.date, end_d: datetime.date, include_live: bool =
 # ==========================================
 # 4. 세션 상태(Session State) 초기화
 # ==========================================
-DEFAULT_3M_START_DATE = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
+DEFAULT_3M_START_DATE = max(DEFAULT_START_DATE, get_now_kst_date() - datetime.timedelta(days=90))
 
 if 'start_date' not in st.session_state:
     st.session_state.start_date = DEFAULT_3M_START_DATE
 if 'end_date' not in st.session_state:
-    st.session_state.end_date = datetime.date.today()
+    st.session_state.end_date = get_now_kst_date()
 if 'selected_preset' not in st.session_state or st.session_state.selected_preset == "ALL":
     st.session_state.selected_preset = "3M"
 
@@ -297,7 +297,7 @@ with st.sidebar:
         "📅 시작일",
         value=st.session_state.start_date,
         min_value=datetime.date(2026, 1, 1),
-        max_value=datetime.date.today(),
+        max_value=get_now_kst_date(),
         help="최근 3개월(3M, 또는 상장일 2026-07-13)이 기본값입니다."
     )
     
@@ -305,7 +305,7 @@ with st.sidebar:
         "📅 종료일",
         value=st.session_state.end_date,
         min_value=input_start_date,
-        max_value=datetime.date.today(),
+        max_value=get_now_kst_date(),
         help="조회 당일 날짜가 기본값입니다."
     )
     
@@ -316,33 +316,33 @@ with st.sidebar:
         is_3m = (st.session_state.get('selected_preset') == "3M")
         if st.button("3M", type="primary" if is_3m else "secondary", use_container_width=True, help="최근 3개월 (90일)"):
             st.session_state.selected_preset = "3M"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=90))
-            st.session_state.end_date = datetime.date.today()
+            st.session_state.start_date = max(DEFAULT_START_DATE, get_now_kst_date() - datetime.timedelta(days=90))
+            st.session_state.end_date = get_now_kst_date()
             st.rerun()
     with preset_c2:
         is_6m = (st.session_state.get('selected_preset') == "6M")
         if st.button("6M", type="primary" if is_6m else "secondary", use_container_width=True, help="최근 6개월 (180일)"):
             st.session_state.selected_preset = "6M"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=180))
-            st.session_state.end_date = datetime.date.today()
+            st.session_state.start_date = max(DEFAULT_START_DATE, get_now_kst_date() - datetime.timedelta(days=180))
+            st.session_state.end_date = get_now_kst_date()
             st.rerun()
     with preset_c3:
         is_1y = (st.session_state.get('selected_preset') == "1Y")
         if st.button("1Y", type="primary" if is_1y else "secondary", use_container_width=True, help="최근 1년 (365일)"):
             st.session_state.selected_preset = "1Y"
-            st.session_state.start_date = max(DEFAULT_START_DATE, datetime.date.today() - datetime.timedelta(days=365))
-            st.session_state.end_date = datetime.date.today()
+            st.session_state.start_date = max(DEFAULT_START_DATE, get_now_kst_date() - datetime.timedelta(days=365))
+            st.session_state.end_date = get_now_kst_date()
             st.rerun()
     with preset_c4:
         is_max = (st.session_state.get('selected_preset') == "MAX")
         if st.button("MAX", type="primary" if is_max else "secondary", use_container_width=True, help="상장일(2026-07-13)부터 현재까지 전체 기간"):
             st.session_state.selected_preset = "MAX"
             st.session_state.start_date = DEFAULT_START_DATE
-            st.session_state.end_date = datetime.date.today()
+            st.session_state.end_date = get_now_kst_date()
             st.rerun()
 
     # 상장 경과일 안내 (상장 초기에는 복수 프리셋이 상장일 이후 동일한 전체 기간으로 조회될 수 있음을 안내)
-    days_since_listing = (datetime.date.today() - DEFAULT_START_DATE).days
+    days_since_listing = (get_now_kst_date() - DEFAULT_START_DATE).days
     if days_since_listing < 90:
         st.caption(f"💡 현재 상장 {days_since_listing}일차로, 상장일(7/13) 이후 전체 기간 데이터가 공통으로 조회됩니다.")
     elif days_since_listing < 365:
@@ -365,7 +365,7 @@ with st.sidebar:
             st.session_state.start_date = input_start_date
             st.session_state.end_date = input_end_date
             
-            d_today = datetime.date.today()
+            d_today = get_now_kst_date()
             d_max = DEFAULT_START_DATE
             d_1y = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=365))
             d_6m = max(DEFAULT_START_DATE, d_today - datetime.timedelta(days=180))
@@ -510,7 +510,7 @@ delta_sign = "▲" if delta_pct > 0 else ("▼" if delta_pct < 0 else "─")
 delta_color_cls = "kpi-highlight-green" if delta_pct >= 0 else "kpi-highlight-orange"
 delta_str = f"{delta_sign} {abs(delta_pct):.2f}%p (전일비)"
 
-is_today_live = (stats['latest_date'] == datetime.date.today()) and include_live_selected
+is_today_live = (stats['latest_date'] == get_now_kst_date()) and include_live_selected
 sk_label = "🇰🇷 SK하이닉스 (장중 실시간)" if is_today_live else "🇰🇷 SK하이닉스 종가"
 sk_sub = f"기준일: {latest_date_str} (장중)" if is_today_live else f"기준일: {latest_date_str}"
 skhy_sub = f"환율: {usdkrw_str} (전일 마감 대비)" if is_today_live else f"환율: {usdkrw_str}"
@@ -1024,7 +1024,7 @@ export_df.index.name = "Date"
 # 화면 출력용 포맷팅
 formatted_table = pd.DataFrame(index=df_display.index)
 formatted_table['일자'] = [
-    f"{d.strftime('%Y-%m-%d')} (장중)" if (d == datetime.date.today() and include_live_selected) else d.strftime('%Y-%m-%d')
+    f"{d.strftime('%Y-%m-%d')} (장중)" if (d == get_now_kst_date() and include_live_selected) else d.strftime('%Y-%m-%d')
     for d in df_display.index
 ]
 formatted_table['SK하이닉스 (원)'] = df_display['SK_KRW'].apply(lambda x: f"₩{int(x):,}")

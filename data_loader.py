@@ -9,7 +9,27 @@ from bs4 import BeautifulSoup
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-DEFAULT_START_DATE = datetime.date(2026, 7, 13)
+def get_now_kst_date() -> datetime.date:
+    """한국 표준시(KST, UTC+9) 기준 현재 날짜(datetime.date)를 반환합니다."""
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    return (now_utc + datetime.timedelta(hours=9)).date()
+
+def get_latest_business_date() -> datetime.date:
+    """
+    서버 OS 타임존(UTC 등)과 무관하게 한국 표준시(KST, UTC+9)를 기준으로
+    가장 최근 정규 거래가 완료된 영업일(YYYY-MM-DD)을 datetime.date 객체로 반환합니다.
+    - 평일 16:00 KST 이전에는 아직 당일 정규장/정산이 확정되지 않았으므로 직전 평일 탐색
+    - 평일 16:00 KST 이후에는 당일을 기준일로 채택
+    - 주말(토, 일)에는 직전 금요일을 기준일로 채택
+    """
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_kst = now_utc + datetime.timedelta(hours=9)
+    start_offset = 0 if (now_kst.weekday() < 5 and now_kst.hour >= 16) else 1
+    for i in range(start_offset, start_offset + 10):
+        d = now_kst - datetime.timedelta(days=i)
+        if d.weekday() < 5:
+            return d.date()
+    return (now_kst - datetime.timedelta(days=1)).date()
 
 def download_ticker_yf(ticker: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
     """
@@ -197,11 +217,11 @@ def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date, include_
     
     # [데이터 정합성 보장 로직]
     # 공식 마감 종가 기준(include_live=False)인 경우:
-    # 당일(Today)처럼 아직 미국 정규장(또는 국내 정규장)이 마감되지 않은 미완성 장중 거래일은 제외하고,
-    # 양국 모두 정규장 마감 종가가 확정된 거래일까지만 반영하여 1:1 정합성을 유지합니다.
+    # 아직 정규장 마감이 되지 않은 미완성 실시간 거래일은 제외하고,
+    # 한국 및 미국 정규장 공식 마감 종가가 확정된 최신 영업일(latest_bdate)까지만 안전하게 반영합니다.
     if not include_live:
-        today = datetime.date.today()
-        df = df[df.index < today]
+        latest_bdate = get_latest_business_date()
+        df = df[df.index <= latest_bdate]
     
     # 시계열 오름차순 정렬 후 양국 공휴일/영업일 차이 Forward Fill
     df = df.sort_index(ascending=True)
