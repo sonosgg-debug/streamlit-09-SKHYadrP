@@ -725,8 +725,8 @@ hover_border = f'rgba(148, 163, 184, {min(1.0, alpha + 0.15):.2f})'
 
 # 차트 레이아웃 튜닝 (다크 테마 디자인)
 fig.update_layout(
-    paper_bgcolor='#0f172a',
-    plot_bgcolor='#1e293b',
+    paper_bgcolor='#1E293B',
+    plot_bgcolor='#0F172A',
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=540,
     margin=dict(l=20, r=20, t=30, b=20),
@@ -743,7 +743,7 @@ fig.update_layout(
         y=1.02,
         xanchor="center",
         x=0.5,
-        bgcolor='rgba(15, 23, 42, 0.85)',
+        bgcolor='rgba(30, 41, 59, 0.85)',
         bordercolor='#334155',
         borderwidth=1,
         font=dict(color='#f8fafc', size=12)
@@ -830,8 +830,8 @@ fig_prices.add_trace(
 )
 
 fig_prices.update_layout(
-    paper_bgcolor='#0f172a',
-    plot_bgcolor='#1e293b',
+    paper_bgcolor='#1E293B',
+    plot_bgcolor='#0F172A',
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=500,
     margin=dict(l=20, r=20, t=30, b=20),
@@ -848,7 +848,7 @@ fig_prices.update_layout(
         y=1.02,
         xanchor="center",
         x=0.5,
-        bgcolor='rgba(15, 23, 42, 0.85)',
+        bgcolor='rgba(30, 41, 59, 0.85)',
         bordercolor='#334155',
         borderwidth=1,
         font=dict(color='#f8fafc', size=12)
@@ -957,8 +957,8 @@ fig_returns.add_hline(
 )
 
 fig_returns.update_layout(
-    paper_bgcolor='#0f172a',
-    plot_bgcolor='#1e293b',
+    paper_bgcolor='#1E293B',
+    plot_bgcolor='#0F172A',
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=500,
     margin=dict(l=20, r=20, t=30, b=20),
@@ -975,7 +975,7 @@ fig_returns.update_layout(
         y=1.02,
         xanchor="center",
         x=0.5,
-        bgcolor='rgba(15, 23, 42, 0.85)',
+        bgcolor='rgba(30, 41, 59, 0.85)',
         bordercolor='#334155',
         borderwidth=1,
         font=dict(color='#f8fafc', size=12)
