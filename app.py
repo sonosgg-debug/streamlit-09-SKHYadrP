@@ -355,7 +355,7 @@ with st.sidebar:
     )
     
     # 빠른 날짜 선택 프리셋 버튼
-    st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 기간 선택</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 선택</div>", unsafe_allow_html=True)
     preset_c1, preset_c2, preset_c3, preset_c4 = st.columns(4)
     with preset_c1:
         is_3m = (st.session_state.get('selected_preset') == "3M")
@@ -444,7 +444,7 @@ with st.sidebar:
     st.markdown("---")
     
     # [데이터 수집 기준: 공식 마감 종가 vs 장중 실시간 포함]
-    st.markdown("<div style='font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 6px;'>⚖️ 데이터 수집 기준</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 6px;'>📊 데이터 수집 기준</div>", unsafe_allow_html=True)
     data_mode = st.radio(
         "데이터 수집 기준 선택",
         options=[
@@ -474,7 +474,7 @@ with st.sidebar:
     
     st.caption("💡 **금융 시각화 가이드**: 두 주가는 시계열 연속성을 가진 **꺾은선**으로 비교하고, 괴리율(%)은 0% 기준선의 **막대**로 표기하는 방식이 추세와 괴리 크기를 가장 직관적으로 보여줍니다.")
 
-    st.markdown("<div style='margin-top: 14px; font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 4px;'>🔍 데이터 창(툴팁) 투명도</div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 14px; font-size: 0.88rem; color: #8AB4F8; font-weight: 700; margin-bottom: 4px;'>🛠️ 툴팁 투명도 설정</div>", unsafe_allow_html=True)
     tooltip_opacity = st.slider(
         "데이터 창 불투명도",
         min_value=20,
