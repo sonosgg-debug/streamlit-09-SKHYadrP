@@ -16,22 +16,128 @@ def get_now_kst_date() -> datetime.date:
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     return (now_utc + datetime.timedelta(hours=9)).date()
 
-def get_latest_business_date() -> datetime.date:
+import requests
+
+# 한국거래소(KRX) 정규 휴장일 및 법정 공휴일 (2024~2027)
+KRX_HOLIDAYS = {
+    # 2024
+    '20240101', '20240209', '20240212', '20240301', '20240410', '20240501', '20240506',
+    '20240515', '20240606', '20240815', '20240916', '20240917', '20240918', '20241001',
+    '20241003', '20241009', '20241225', '20241231',
+    # 2025
+    '20250101', '20250128', '20250129', '20250130', '20250303', '20250501', '20250505',
+    '20250506', '20250606', '20250815', '20251003', '20251006', '20251007', '20251008',
+    '20251009', '20251225', '20251231',
+    # 2026
+    '20260101', '20260216', '20260217', '20260218', '20260302', '20260501', '20260505',
+    '20260525', '20260603', '20260606', '20260817', '20260924', '20260925', '20261005',
+    '20261009', '20261225', '20261231',
+    # 2027
+    '20270101', '20270208', '20270209', '20270210', '20270301', '20270503', '20270505',
+    '20270513', '20270607', '20270816', '20270914', '20270915', '20270916', '20271004',
+    '20271011', '20271225', '20271231'
+}
+
+_CACHED_TRADING_DAYS = None
+
+def get_krx_trading_days(count=120):
+    """
+    한국거래소(KRX)의 실제 거래일(개장일) 목록을 반환합니다.
+    1. 네이버 증시 API를 통해 실시간 실제 거래일 리스트를 우선 확보
+    2. 실패 시 사전 정의된 휴장일 캘린더 및 주말 제외 알고리즘으로 폴백
+    """
+    global _CACHED_TRADING_DAYS
+    if _CACHED_TRADING_DAYS is not None and len(_CACHED_TRADING_DAYS) >= count:
+        return _CACHED_TRADING_DAYS
+        
+    days = []
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    pages_needed = (count + 59) // 60
+    for page in range(1, pages_needed + 1):
+        try:
+            url = f'https://m.stock.naver.com/api/stock/005930/price?pageSize=60&page={page}'
+            r = requests.get(url, headers=headers, timeout=3)
+            if r.status_code == 200:
+                items = r.json()
+                if items:
+                    days.extend([item['localTradedAt'].replace('-', '') for item in items])
+                else:
+                    break
+        except Exception:
+            pass
+            
+    if days:
+        _CACHED_TRADING_DAYS = sorted(list(set(days)))
+        return _CACHED_TRADING_DAYS
+        
+    fallback_days = []
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_kst = now_utc + datetime.timedelta(hours=9)
+    d = now_kst
+    for _ in range(count * 3):
+        d_str = d.strftime('%Y%m%d')
+        if d.weekday() < 5 and d_str not in KRX_HOLIDAYS:
+            fallback_days.append(d_str)
+            if len(fallback_days) >= count:
+                break
+        d -= datetime.timedelta(days=1)
+        
+    _CACHED_TRADING_DAYS = sorted(fallback_days)
+    return _CACHED_TRADING_DAYS
+
+def is_krx_trading_day(date_val):
+    """주어진 날짜(date, YYYYMMDD 또는 YYYY-MM-DD)가 실제 거래일인지 판별합니다."""
+    clean_date = str(date_val).replace('-', '')
+    trading_days = get_krx_trading_days(120)
+    if clean_date in trading_days:
+        return True
+    try:
+        dt = datetime.datetime.strptime(clean_date, "%Y%m%d")
+        return (dt.weekday() < 5) and (clean_date not in KRX_HOLIDAYS)
+    except:
+        return False
+
+def get_latest_business_date(target_date=None) -> datetime.date:
     """
     서버 OS 타임존(UTC 등)과 무관하게 한국 표준시(KST, UTC+9)를 기준으로
     가장 최근 정규 거래가 완료된 영업일(YYYY-MM-DD)을 datetime.date 객체로 반환합니다.
-    - 평일 16:00 KST 이전에는 아직 당일 정규장/정산이 확정되지 않았으므로 직전 평일 탐색
-    - 평일 16:00 KST 이후에는 당일을 기준일로 채택
-    - 주말(토, 일)에는 직전 금요일을 기준일로 채택
+    - target_date가 전달된 경우: 해당 날짜가 거래일이면 그대로, 휴장일이면 직전 실제 거래일로 자동 보정
+    - target_date가 없는 경우: KST 기준 16:00 이전이거나 오늘이 휴장일이면 최신 마감 거래일 반환
     """
+    trading_days = get_krx_trading_days(120)
+    
+    if target_date:
+        clean_date = str(target_date).replace('-', '')
+        if clean_date in trading_days:
+            return datetime.datetime.strptime(clean_date, "%Y%m%d").date()
+        earlier = [d for d in trading_days if d <= clean_date]
+        if earlier:
+            return datetime.datetime.strptime(earlier[-1], "%Y%m%d").date()
+        try:
+            dt = datetime.datetime.strptime(clean_date, "%Y%m%d")
+            while True:
+                d_str = dt.strftime("%Y%m%d")
+                if dt.weekday() < 5 and d_str not in KRX_HOLIDAYS:
+                    return dt.date()
+                dt -= datetime.timedelta(days=1)
+        except Exception:
+            if isinstance(target_date, datetime.date):
+                return target_date
+            return datetime.datetime.strptime(clean_date, "%Y%m%d").date()
+
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     now_kst = now_utc + datetime.timedelta(hours=9)
-    start_offset = 0 if (now_kst.weekday() < 5 and now_kst.hour >= 16) else 1
-    for i in range(start_offset, start_offset + 10):
-        d = now_kst - datetime.timedelta(days=i)
-        if d.weekday() < 5:
-            return d.date()
-    return (now_kst - datetime.timedelta(days=1)).date()
+    today_str = now_kst.strftime('%Y%m%d')
+
+    if now_kst.hour >= 16 and today_str in trading_days:
+        return datetime.datetime.strptime(today_str, "%Y%m%d").date()
+
+    prior_days = [d for d in trading_days if d < today_str]
+    if prior_days:
+        return datetime.datetime.strptime(prior_days[-1], "%Y%m%d").date()
+
+    fallback_str = trading_days[-1] if trading_days else (now_kst - datetime.timedelta(days=1)).strftime('%Y%m%d')
+    return datetime.datetime.strptime(fallback_str, "%Y%m%d").date()
 
 def download_ticker_yf(ticker: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
     """
