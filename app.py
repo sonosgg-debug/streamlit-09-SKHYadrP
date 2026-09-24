@@ -336,23 +336,27 @@ with st.sidebar:
     st.markdown("<h2 style='color: #8AB4F8; font-size: 1.3rem; margin-top: 0;'>⚙️ 조회 설정</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;'>분석할 기간과 차트 형태를 설정합니다.</p>", unsafe_allow_html=True)
     
-    # 캘린더 입력 (시작일, 종료일)
-    
-    input_start_date = st.date_input(
-        "📅 시작일",
-        value=st.session_state.start_date,
-        min_value=datetime.date(2026, 1, 1),
-        max_value=get_now_kst_date(),
-        help="최근 3개월(3M, 또는 상장일 2026-07-13)이 기본값입니다."
-    )
-    
-    input_end_date = st.date_input(
-        "📅 종료일",
-        value=st.session_state.end_date,
-        min_value=input_start_date,
-        max_value=get_now_kst_date(),
-        help="조회 당일 날짜가 기본값입니다."
-    )
+    # 캘린더 입력 (시작일, 종료일) - 가로 2열 배치 및 '📅 조회 기간' 소제목 통일
+    st.markdown("<div style='font-size: 0.95rem; font-weight: 600; color: #8AB4F8; margin-bottom: 6px;'>📅 조회 기간</div>", unsafe_allow_html=True)
+    col_start, col_end = st.columns(2)
+    with col_start:
+        input_start_date = st.date_input(
+            "시작일",
+            value=st.session_state.start_date,
+            min_value=datetime.date(2026, 1, 1),
+            max_value=get_now_kst_date(),
+            label_visibility="collapsed",
+            help="조회 시작일 (최근 3개월 기본값)"
+        )
+    with col_end:
+        input_end_date = st.date_input(
+            "종료일",
+            value=st.session_state.end_date,
+            min_value=input_start_date,
+            max_value=get_now_kst_date(),
+            label_visibility="collapsed",
+            help="조회 종료일 (당일 날짜 기본값)"
+        )
     
     # 빠른 날짜 선택 프리셋 버튼
     st.markdown("<div style='font-size: 0.82rem; color: #94a3b8; margin: 12px 0 6px 0; font-weight: 600;'>⚡ 빠른 선택</div>", unsafe_allow_html=True)
