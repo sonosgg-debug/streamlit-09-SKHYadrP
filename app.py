@@ -99,11 +99,11 @@ st.markdown("""
     
     .section-title {
         color: #8AB4F8 !important;
-        font-size: 1.45rem !important;
+        font-size: 1.20rem !important;
         font-weight: 700 !important;
         letter-spacing: -0.3px;
-        margin-top: 36px;
-        margin-bottom: 14px;
+        margin-top: 24px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -641,7 +641,7 @@ st.divider()
 # 9. 1. SKHY(ADR) 프리미엄 차트 영역
 # ==========================================
 st.markdown(
-    "<h2 class='section-title'>1. SKHY(ADR) 프리미엄 차트</h2>",
+    "<div class='section-title'><span>📈</span> 1. SKHY(ADR) 프리미엄 차트</div>",
     unsafe_allow_html=True
 )
 date_index_str = [d.strftime('%Y-%m-%d') for d in df.index]
@@ -881,7 +881,7 @@ st.plotly_chart(fig, use_container_width=True)
 # 10. 2. SK하이닉스 vs SKHY 주가 차트 (가공 없는 원본 주가 비교)
 # ==========================================
 st.markdown(
-    "<h2 class='section-title'>2. SK하이닉스 vs SKHY 주가 차트</h2>",
+    "<div class='section-title'><span>📊</span> 2. SK하이닉스 vs SKHY 주가 차트</div>",
     unsafe_allow_html=True
 )
 
@@ -984,7 +984,7 @@ st.plotly_chart(fig_prices, use_container_width=True)
 # 11. 3. SK하이닉스 vs SKHY 수익률 차트 (기준일 대비 백분율)
 # ==========================================
 st.markdown(
-    "<h2 class='section-title'>3. SK하이닉스 vs SKHY 수익률 차트</h2>",
+    "<div class='section-title'><span>📉</span> 3. SK하이닉스 vs SKHY 수익률 차트</div>",
     unsafe_allow_html=True
 )
 
@@ -1100,7 +1100,7 @@ st.divider()
 # 12. 하단 원본 데이터 테이블 영역
 # ==========================================
 st.markdown(
-    "<h2 class='section-title'>📋 SKHY(ADR) 프리미엄 원본 데이터 확인</h2>",
+    "<div class='section-title'><span>📋</span> SKHY(ADR) 프리미엄 원본 데이터 확인</div>",
     unsafe_allow_html=True
 )
 
