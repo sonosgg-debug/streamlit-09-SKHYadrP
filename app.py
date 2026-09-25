@@ -49,9 +49,15 @@ st.markdown("""
     }
     
     /* 사이드바 스타일링 */
-    section[data-testid="stSidebar"] {
+    section[data-testid="stSidebar"], [data-testid="stSidebar"] {
         background-color: #1e293b !important;
         border-right: 1px solid #334155 !important;
+    }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #f8fafc !important;
+        -webkit-text-fill-color: #f8fafc !important;
     }
     
     /* 제목 폰트 색상 (00 Bookmarks 공식 타이틀 색상: #8AB4F8) */
@@ -333,11 +339,23 @@ if 'selected_preset' not in st.session_state or st.session_state.selected_preset
 # 5. 대시보드 왼쪽 (사이드바 제어 패널)
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='color: #8AB4F8; font-size: 1.3rem; margin-top: 0;'>⚙️ 조회 설정</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;'>분석할 기간과 차트 형태를 설정합니다.</p>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style='padding: 2px 0 12px 0;'>
+            <div style='font-size: 1.25rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px;'>
+                <span>⚙️</span> 조회 설정
+            </div>
+            <div style='font-size: 0.82rem; color: #94a3b8; margin-top: 4px; line-height: 1.4;'>
+                분석할 기간과 차트 조회 옵션을 설정합니다.
+            </div>
+        </div>
+        <hr style='border: 0; height: 1px; background-color: #334155; margin: 10px 0 16px 0;'>
+        """,
+        unsafe_allow_html=True
+    )
     
     # 캘린더 입력 (시작일, 종료일) - 가로 2열 배치 및 '📅 조회 기간' 소제목 통일
-    st.markdown("<div style='font-size: 0.95rem; font-weight: 600; color: #8AB4F8; margin-bottom: 6px;'>📅 조회 기간</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.95rem; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;'>📅 조회 기간</div>", unsafe_allow_html=True)
     col_start, col_end = st.columns(2)
     with col_start:
         input_start_date = st.date_input(
