@@ -1,3 +1,6 @@
+import socket
+socket.setdefaulttimeout(5.0)
+
 import os
 import base64
 import streamlit as st
@@ -8,6 +11,21 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from data_loader import fetch_skhy_data, get_summary_stats, DEFAULT_START_DATE, get_now_kst_date, get_latest_business_date
+
+STANDARD_CHART_THEME = {
+    'paper_bgcolor': '#1E293B',    # Tailwind Slate-800 (외곽 카드 배경)
+    'plot_bgcolor': '#0F172A',     # Tailwind Slate-900 (내부 딥 블랙 플롯)
+    'text_main': '#F8FAFC',        # 타이틀/헤더 텍스트 (순백색)
+    'text_body': '#E2E8F0',        # 본문 및 축 라벨 (부드러운 화이트)
+    'text_muted': '#CBD5E1',       # 축 눈금 수치 텍스트 (Slate-300)
+    'grid_color': '#334155',       # 그리드 격자선 (Slate-700)
+    'border_color': '#475569',     # 축 기준선 (Slate-600)
+    'legend_bg': 'rgba(30, 41, 59, 0.85)',
+    'legend_border': '#334155',
+    'hover_bg': 'rgba(15, 23, 42, 0.9)',
+    'hover_border': '#334155'
+}
+
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "sk_hynix_logo.png")
 
@@ -40,6 +58,11 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
     }
     
+    /* Streamlit 고정 상단 헤더 배경 투명화 */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+
     /* 상단 여백 최적화 */
     .main .block-container,
     [data-testid="stMainBlockContainer"] {
@@ -792,8 +815,8 @@ hover_border = f'rgba(148, 163, 184, {min(1.0, alpha + 0.15):.2f})'
 
 # 차트 레이아웃 튜닝 (다크 테마 디자인)
 fig.update_layout(
-    paper_bgcolor='#1E293B',
-    plot_bgcolor='#0F172A',
+    paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+    plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=540,
     margin=dict(l=20, r=20, t=30, b=20),
@@ -897,8 +920,8 @@ fig_prices.add_trace(
 )
 
 fig_prices.update_layout(
-    paper_bgcolor='#1E293B',
-    plot_bgcolor='#0F172A',
+    paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+    plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=500,
     margin=dict(l=20, r=20, t=30, b=20),
@@ -1024,8 +1047,8 @@ fig_returns.add_hline(
 )
 
 fig_returns.update_layout(
-    paper_bgcolor='#1E293B',
-    plot_bgcolor='#0F172A',
+    paper_bgcolor=STANDARD_CHART_THEME['paper_bgcolor'],
+    plot_bgcolor=STANDARD_CHART_THEME['plot_bgcolor'],
     font=dict(family='Noto Sans KR, sans-serif', color='#cbd5e1', size=12),
     height=500,
     margin=dict(l=20, r=20, t=30, b=20),

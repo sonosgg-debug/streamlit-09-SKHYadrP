@@ -1,8 +1,9 @@
-streamlit
-pandas
-yfinance
+streamlit>=1.35.0
+pandas>=2.0.0
+yfinance>=0.2.35
 plotly
 openpyxl
 requests
 beautifulsoup4
 finance-datareader
+pykrx>=1.2.0
