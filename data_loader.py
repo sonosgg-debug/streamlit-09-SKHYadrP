@@ -41,6 +41,32 @@ KRX_HOLIDAYS = {
     '20271011', '20271225', '20271231'
 }
 
+# 미국 증시(NYSE/NASDAQ) 정규 휴장일 (2024~2027)
+US_HOLIDAYS = {
+    # 2024
+    '20240101', '20240115', '20240219', '20240329', '20240527', '20240619', '20240704', '20240902', '20241128', '20241225',
+    # 2025
+    '20250101', '20250120', '20250217', '20250418', '20250526', '20250619', '20250704', '20250901', '20251127', '20251225',
+    # 2026
+    '20260101', '20260119', '20260216', '20260403', '20260525', '20260619', '20260703', '20260907', '20261126', '20261225',
+    # 2027
+    '20270101', '20270118', '20270215', '20270326', '20270531', '20270618', '20270705', '20270906', '20271125', '20271224'
+}
+
+def is_us_trading_day(date_val):
+    """주어진 날짜(date, YYYYMMDD 또는 YYYY-MM-DD)가 미국 증시 정규 거래일인지 판별합니다."""
+    clean_date = str(date_val).replace('-', '')
+    try:
+        dt = datetime.datetime.strptime(clean_date, "%Y%m%d")
+        return (dt.weekday() < 5) and (clean_date not in US_HOLIDAYS)
+    except:
+        return False
+
+def is_any_market_trading_day(date_val):
+    """한국거래소 또는 미국 증시 중 최소 한 곳이라도 정규 거래일인지 판별합니다."""
+    return is_krx_trading_day(date_val) or is_us_trading_day(date_val)
+
+
 _CACHED_TRADING_DAYS = None
 
 def get_krx_trading_days(count=120):
@@ -103,44 +129,52 @@ def is_krx_trading_day(date_val):
 def get_latest_business_date(target_date=None) -> datetime.date:
     """
     서버 OS 타임존(UTC 등)과 무관하게 한국 표준시(KST, UTC+9)를 기준으로
-    가장 최근 정규 거래가 완료된 영업일(YYYY-MM-DD)을 datetime.date 객체로 반환합니다.
-    - target_date가 전달된 경우: 해당 날짜가 거래일이면 그대로, 휴장일이면 직전 실제 거래일로 자동 보정
-    - target_date가 없는 경우: KST 기준 16:00 이전이거나 오늘이 휴장일이면 최신 마감 거래일 반환
+    한국거래소(KRX) 또는 미국 증시(NYSE/NASDAQ) 중 최소 한 곳이라도 정규 거래가
+    완료되어 공식 마감 종가가 확정된 최신 영업일(YYYY-MM-DD)을 datetime.date 객체로 반환합니다.
+    - target_date가 전달된 경우: 해당 날짜 이하에서 양국 중 최소 한 곳이라도 개장했던 최신 거래일로 자동 보정
+    - target_date가 없는 경우:
+        1) 오늘(당일)이 한국 거래일이고 16:00 이후이면 오늘을 최신 마감 거래일로 반환
+        2) 그 외의 경우, 어제(또는 그 이전) 중 한국 또는 미국 시장이 마감 완료된 최신 거래일 반환
+           (미국 거래일의 공식 마감은 KST 기준 익일 06:00 이후에 확정 반영됨)
     """
-    trading_days = get_krx_trading_days(120)
-    
-    if target_date:
-        clean_date = str(target_date).replace('-', '')
-        if clean_date in trading_days:
-            return datetime.datetime.strptime(clean_date, "%Y%m%d").date()
-        earlier = [d for d in trading_days if d <= clean_date]
-        if earlier:
-            return datetime.datetime.strptime(earlier[-1], "%Y%m%d").date()
-        try:
-            dt = datetime.datetime.strptime(clean_date, "%Y%m%d")
-            while True:
-                d_str = dt.strftime("%Y%m%d")
-                if dt.weekday() < 5 and d_str not in KRX_HOLIDAYS:
-                    return dt.date()
-                dt -= datetime.timedelta(days=1)
-        except Exception:
-            if isinstance(target_date, datetime.date):
-                return target_date
-            return datetime.datetime.strptime(clean_date, "%Y%m%d").date()
-
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     now_kst = now_utc + datetime.timedelta(hours=9)
-    today_str = now_kst.strftime('%Y%m%d')
+    today = now_kst.date()
 
-    if now_kst.hour >= 16 and today_str in trading_days:
-        return datetime.datetime.strptime(today_str, "%Y%m%d").date()
+    if target_date:
+        if isinstance(target_date, str):
+            clean_date = target_date.replace('-', '')
+            dt = datetime.datetime.strptime(clean_date, "%Y%m%d").date()
+        elif isinstance(target_date, datetime.date):
+            dt = target_date
+        else:
+            dt = today
+        for _ in range(60):
+            if is_any_market_trading_day(dt):
+                return dt
+            dt -= datetime.timedelta(days=1)
+        return today
 
-    prior_days = [d for d in trading_days if d < today_str]
-    if prior_days:
-        return datetime.datetime.strptime(prior_days[-1], "%Y%m%d").date()
+    # 1. 오늘이 한국 정규 거래일이고 16:00 이후(장 마감)인 경우 오늘 반환
+    if now_kst.hour >= 16 and is_krx_trading_day(today):
+        return today
 
-    fallback_str = trading_days[-1] if trading_days else (now_kst - datetime.timedelta(days=1)).strftime('%Y%m%d')
-    return datetime.datetime.strptime(fallback_str, "%Y%m%d").date()
+    # 2. 어제 또는 그 이전 날짜 중 최신 마감 영업일 탐색
+    d = today - datetime.timedelta(days=1)
+    for _ in range(60):
+        # d가 미국 거래일인 경우: KST 익일(d+1) 06:00 이후 공식 마감
+        # 만약 d가 바로 어제(today-1)이고 현재 시각이 06:00 이전이라면 미국 어제 장은 아직 진행 중일 수 있음
+        if is_us_trading_day(d):
+            if d == today - datetime.timedelta(days=1) and now_kst.hour < 6:
+                if is_krx_trading_day(d):
+                    return d
+            else:
+                return d
+        elif is_krx_trading_day(d):
+            return d
+        d -= datetime.timedelta(days=1)
+
+    return today - datetime.timedelta(days=1)
 
 def download_ticker_yf(ticker: str, start_date: datetime.date, end_date: datetime.date) -> pd.Series:
     """
@@ -326,6 +360,11 @@ def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date, include_
     # 두 주식 시장 중 최소 한 곳이라도 개장한 날 보존
     df = df.dropna(subset=['SKHY_USD', 'SK_KRW'], how='all')
     
+    # [양국 정규장 휴장 여부 기록]
+    # ffill 적용 전에 결측 여부를 판별하여 특정 시장이 휴장이었는지를 보존합니다.
+    df['SK_Holiday'] = df['SK_KRW'].isna()
+    df['US_Holiday'] = df['SKHY_USD'].isna()
+    
     # [데이터 정합성 보장 로직]
     # 공식 마감 종가 기준(include_live=False)인 경우:
     # 아직 정규장 마감이 되지 않은 미완성 실시간 거래일은 제외하고,
@@ -335,6 +374,7 @@ def fetch_skhy_data(start_date: datetime.date, end_date: datetime.date, include_
         df = df[df.index <= latest_bdate]
     
     # 시계열 오름차순 정렬 후 양국 공휴일/영업일 차이 Forward Fill
+    # (한국 휴장 시 직전 국내 종가 유지, 미국 휴장 시 직전 미국 종가 유지)
     df = df.sort_index(ascending=True)
     df = df.ffill()
     # 시작 시점 이전 NaN 제거
@@ -372,6 +412,8 @@ def get_summary_stats(df: pd.DataFrame) -> dict:
     skhy_krw = latest_row['SKHY_KRW']
     premium_krw = latest_row['Premium_KRW']
     premium_pct = latest_row['Premium_Pct']
+    sk_holiday = bool(latest_row.get('SK_Holiday', False))
+    us_holiday = bool(latest_row.get('US_Holiday', False))
     
     prev_premium_pct = prev_row['Premium_Pct']
     delta_premium_pct = premium_pct - prev_premium_pct
@@ -397,6 +439,8 @@ def get_summary_stats(df: pd.DataFrame) -> dict:
         'min_premium': min_premium,
         'max_date': max_date,
         'min_date': min_date,
+        'sk_holiday': sk_holiday,
+        'us_holiday': us_holiday,
         'data_count': len(df)
     }
 

@@ -601,10 +601,19 @@ delta_color_cls = "kpi-highlight-green" if delta_pct >= 0 else "kpi-highlight-or
 delta_str = f"{delta_sign} {abs(delta_pct):.2f}%p (전일비)"
 
 is_today_live = (stats['latest_date'] == get_now_kst_date()) and include_live_selected
-sk_label = "🇰🇷 SK하이닉스 (장중 실시간)" if is_today_live else "🇰🇷 SK하이닉스 종가"
-sk_sub = f"기준일: {latest_date_str} (장중)" if is_today_live else f"기준일: {latest_date_str}"
-skhy_sub = f"환율: {usdkrw_str} (전일 마감 대비)" if is_today_live else f"환율: {usdkrw_str}"
-prem_label = "⚡ 장중 실시간 프리미엄" if is_today_live else "🎯 최신 ADR 프리미엄"
+is_latest_sk_holiday = stats.get('sk_holiday', False)
+is_latest_us_holiday = stats.get('us_holiday', False)
+
+if is_today_live:
+    sk_label = "🇰🇷 SK하이닉스 (장중 실시간)"
+    sk_sub = f"기준일: {latest_date_str} (장중)"
+    skhy_sub = f"환율: {usdkrw_str} (전일 마감 대비)"
+    prem_label = "⚡ 장중 실시간 프리미엄"
+else:
+    sk_label = "🇰🇷 SK하이닉스 종가"
+    sk_sub = f"기준일: {latest_date_str} (국내 휴장, 직전 종가)" if is_latest_sk_holiday else f"기준일: {latest_date_str}"
+    skhy_sub = f"기준일: {latest_date_str} (미국 휴장, 직전 종가)" if is_latest_us_holiday else f"환율: {usdkrw_str}"
+    prem_label = "🎯 최신 ADR 프리미엄"
 
 st.markdown(f"""
 <div class='kpi-container'>
@@ -647,10 +656,19 @@ st.markdown(
 date_index_str = [d.strftime('%Y-%m-%d') for d in df.index]
 
 # 커스텀 툴팁을 위한 지표별 전용 텍스트 구성 (중복 노출 방지 및 가독성 최적화)
-hover_sk = [f"₩{int(r['SK_KRW']):,}" for _, r in df.iterrows()]
-hover_skhy = [f"₩{int(r['SKHY_KRW']):,} (${r['SKHY_USD']:.2f} | 환율 ₩{r['USDKRW']:,.2f})" for _, r in df.iterrows()]
+hover_sk = [
+    f"₩{int(r['SK_KRW']):,} (국내 휴장, 직전 종가)" if r.get('SK_Holiday', False)
+    else f"₩{int(r['SK_KRW']):,}"
+    for _, r in df.iterrows()
+]
+hover_skhy = [
+    f"₩{int(r['SKHY_KRW']):,} (${r['SKHY_USD']:.2f} (미국 휴장) | 환율 ₩{r['USDKRW']:,.2f})" if r.get('US_Holiday', False)
+    else f"₩{int(r['SKHY_KRW']):,} (${r['SKHY_USD']:.2f} | 환율 ₩{r['USDKRW']:,.2f})"
+    for _, r in df.iterrows()
+]
 hover_prem = [
     f"<b>{'+' if r['Premium_Pct']>=0 else ''}{r['Premium_Pct']:.2f}%</b> ({'+' if r['Premium_KRW']>=0 else ''}₩{int(r['Premium_KRW']):,})"
+    + (" [국내 휴장]" if r.get('SK_Holiday', False) else (" [미국 휴장]" if r.get('US_Holiday', False) else ""))
     for _, r in df.iterrows()
 ]
 
@@ -888,7 +906,11 @@ st.markdown(
 fig_prices = make_subplots(specs=[[{"secondary_y": True}]])
 
 # 1) SK하이닉스 원본 주가 (좌측 Y축: 원화, 꺾은선)
-hover_sk_price = [f"₩{int(r['SK_KRW']):,}" for _, r in df.iterrows()]
+hover_sk_price = [
+    f"₩{int(r['SK_KRW']):,} (국내 휴장, 직전 종가)" if r.get('SK_Holiday', False)
+    else f"₩{int(r['SK_KRW']):,}"
+    for _, r in df.iterrows()
+]
 fig_prices.add_trace(
     go.Scatter(
         x=date_index_str,
@@ -904,7 +926,11 @@ fig_prices.add_trace(
 )
 
 # 2) SKHY 원본 주가 (우측 Y축: 달러, 꺾은선)
-hover_skhy_usd = [f"${r['SKHY_USD']:.2f}" for _, r in df.iterrows()]
+hover_skhy_usd = [
+    f"${r['SKHY_USD']:.2f} (미국 휴장, 직전 종가)" if r.get('US_Holiday', False)
+    else f"${r['SKHY_USD']:.2f}"
+    for _, r in df.iterrows()
+]
 fig_prices.add_trace(
     go.Scatter(
         x=date_index_str,
@@ -979,6 +1005,7 @@ fig_prices.update_xaxes(
 
 # 주가 비교 차트 렌더링
 st.plotly_chart(fig_prices, use_container_width=True)
+st.caption("💡 **공휴일 데이터 처리 안내**: 한국 또는 미국 한쪽 시장만 휴장인 경우(예: 추석 연휴 등), 휴장 시장은 직전 거래일 종가가 그대로 유지(Forward Fill)되고 개장 시장은 실제 당일 공식 종가가 반영되어 두 주가가 단절 없이 연속적으로 비교됩니다.")
 
 # ==========================================
 # 11. 3. SK하이닉스 vs SKHY 수익률 차트 (기준일 대비 백분율)
@@ -998,10 +1025,12 @@ skhy_returns = ((df['SKHY_USD'] - base_skhy) / base_skhy) * 100.0 if base_skhy !
 
 hover_sk_ret = [
     f"<b>{'+' if ret >= 0 else ''}{ret:.2f}%</b> (₩{int(r['SK_KRW']):,})"
+    + (" [국내 휴장]" if r.get('SK_Holiday', False) else "")
     for ret, (_, r) in zip(sk_returns, df.iterrows())
 ]
 hover_skhy_ret = [
     f"<b>{'+' if ret >= 0 else ''}{ret:.2f}%</b> (${r['SKHY_USD']:.2f})"
+    + (" [미국 휴장]" if r.get('US_Holiday', False) else "")
     for ret, (_, r) in zip(skhy_returns, df.iterrows())
 ]
 
@@ -1112,10 +1141,19 @@ export_df = df_display.copy()
 export_df.index.name = "Date"
 
 # 화면 출력용 포맷팅
+def get_display_date_label(d, r):
+    if d == get_now_kst_date() and include_live_selected:
+        return f"{d.strftime('%Y-%m-%d')} (장중)"
+    if r.get('SK_Holiday', False) and not r.get('US_Holiday', False):
+        return f"{d.strftime('%Y-%m-%d')} (국내 휴장)"
+    if r.get('US_Holiday', False) and not r.get('SK_Holiday', False):
+        return f"{d.strftime('%Y-%m-%d')} (미국 휴장)"
+    return d.strftime('%Y-%m-%d')
+
 formatted_table = pd.DataFrame(index=df_display.index)
 formatted_table['일자'] = [
-    f"{d.strftime('%Y-%m-%d')} (장중)" if (d == get_now_kst_date() and include_live_selected) else d.strftime('%Y-%m-%d')
-    for d in df_display.index
+    get_display_date_label(d, r)
+    for d, (_, r) in zip(df_display.index, df_display.iterrows())
 ]
 formatted_table['SK하이닉스 (원)'] = df_display['SK_KRW'].apply(lambda x: f"₩{int(x):,}")
 formatted_table['SKHY ($)'] = df_display['SKHY_USD'].apply(lambda x: f"${x:.2f}")
@@ -1127,7 +1165,7 @@ formatted_table['프리미엄 율 (%)'] = df_display['Premium_Pct'].apply(lambda
 # 다운로드 버튼 및 안내 컨트롤
 tb_col1, tb_col2, tb_col3 = st.columns([6, 2, 2], vertical_alignment="bottom")
 with tb_col1:
-    st.caption(f"총 {len(formatted_table)}개 거래일 데이터가 조회되었습니다. (최근 일자 순 정렬)")
+    st.caption(f"총 {len(formatted_table)}개 거래일 데이터가 조회되었습니다. (최근 일자 순 정렬 / 공휴일 시 직전 거래일 공식 종가 유지)")
 
 with tb_col2:
     # CSV 다운로드
