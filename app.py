@@ -1,5 +1,3 @@
-import socket
-socket.setdefaulttimeout(5.0)
 
 import os
 import base64
@@ -25,7 +23,6 @@ STANDARD_CHART_THEME = {
     'hover_bg': 'rgba(15, 23, 42, 0.9)',
     'hover_border': '#334155'
 }
-
 
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "sk_hynix_logo.png")
 

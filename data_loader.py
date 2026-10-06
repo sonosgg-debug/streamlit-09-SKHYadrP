@@ -1,5 +1,3 @@
-import socket
-socket.setdefaulttimeout(5.0)
 
 import datetime
 import re
@@ -65,7 +63,6 @@ def is_us_trading_day(date_val):
 def is_any_market_trading_day(date_val):
     """한국거래소 또는 미국 증시 중 최소 한 곳이라도 정규 거래일인지 판별합니다."""
     return is_krx_trading_day(date_val) or is_us_trading_day(date_val)
-
 
 _CACHED_TRADING_DAYS = None
 
