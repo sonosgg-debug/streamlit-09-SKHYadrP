@@ -19,6 +19,20 @@ except Exception:
 import os
 import base64
 import streamlit as st
+
+# ==========================================
+# 1. 페이지 환경설정
+# [가이드 05] Streamlit 명령 최우선 실행 보장 (StreamlitAPIException 및 무한 로딩 방어)
+# ==========================================
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "sk_hynix_logo.png")
+
+st.set_page_config(
+    page_title="SKHY(ADR) 프리미엄 추이",
+    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else None,
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import importlib
 import pandas as pd
 import datetime
@@ -26,9 +40,13 @@ import io
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import data_loader
-importlib.reload(data_loader)
-from data_loader import fetch_skhy_data, get_summary_stats, DEFAULT_START_DATE, get_now_kst_date, get_latest_business_date
+try:
+    import data_loader
+    importlib.reload(data_loader)
+    from data_loader import fetch_skhy_data, get_summary_stats, DEFAULT_START_DATE, get_now_kst_date, get_latest_business_date
+except Exception as e:
+    st.error(f"모듈 로드 중 오류가 발생했습니다: {e}")
+    st.stop()
 
 STANDARD_CHART_THEME = {
     'paper_bgcolor': '#1E293B',    # Tailwind Slate-800 (외곽 카드 배경)
@@ -44,24 +62,12 @@ STANDARD_CHART_THEME = {
     'hover_border': '#334155'
 }
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "sk_hynix_logo.png")
-
 def get_logo_html(height: int = 46) -> str:
     if os.path.exists(LOGO_PATH):
         with open(LOGO_PATH, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
         return f"<img src='data:image/png;base64,{b64}' style='height: {height}px; object-fit: contain; vertical-align: middle;' alt='SK hynix'>"
     return ""
-
-# ==========================================
-# 1. 페이지 환경설정
-# ==========================================
-st.set_page_config(
-    page_title="SKHY(ADR) 프리미엄 추이",
-    page_icon=LOGO_PATH if os.path.exists(LOGO_PATH) else None,
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # ==========================================
 # 2. 커스텀 CSS 스타일링 (00 Bookmarks 다크 테마 계승)
